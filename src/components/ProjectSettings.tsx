@@ -1,4 +1,3 @@
-import { forgetAsset } from "../media";
 import { useEditor } from "../store";
 import { ASPECTS } from "../types";
 import { Icon } from "./Icon";
@@ -76,18 +75,8 @@ export function ProjectSettings({ onClose }: { onClose(): void }) {
               ))}
             </select>
           </label>
-          <button
-            className="danger wide"
-            onClick={() => {
-              if (!confirm("¿Crear un proyecto nuevo? Se borrarán el proyecto actual y sus archivos de este equipo.")) return;
-              project.assets.forEach((a) => forgetAsset(a.id));
-              useEditor.getState().resetProject();
-              onClose();
-            }}
-          >
-            Nuevo proyecto
-          </button>
         </details>
+        <p className="muted small">Para crear otro proyecto, vuelve a «Proyectos» (arriba a la izquierda). Este se guarda solo.</p>
       </div>
     </div>
   );

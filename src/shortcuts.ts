@@ -1,9 +1,16 @@
 import { engineRef } from "./components/Preview";
+import { saveNow } from "./persistence";
 import { selectDuration, useEditor } from "./store";
 
 /** Atajos al estilo de los editores profesionales (J/K/L, S para dividir, etc.). */
 export function installShortcuts(): () => void {
   const onKey = (e: KeyboardEvent) => {
+    // Ctrl+S guarda incluso mientras se escribe en un campo (evita el "Guardar página" del navegador).
+    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "s") {
+      e.preventDefault();
+      void saveNow().then(() => useEditor.getState().setStatus("Proyecto guardado"));
+      return;
+    }
     const target = e.target;
     if (target instanceof Element && target.closest("input, textarea, select, [contenteditable]")) return;
     const s = useEditor.getState();

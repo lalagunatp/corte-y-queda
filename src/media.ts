@@ -94,7 +94,7 @@ export async function importFiles(files: Iterable<File>): Promise<{ assets: Medi
       await set(blobKey(id), file);
     } catch {
       rejected.push(file.name);
-      forgetAsset(id);
+      void deleteAssetFile(id);
     }
   }
   return { assets, rejected };
@@ -111,13 +111,32 @@ export async function restoreAssets(assets: MediaAsset[]): Promise<string[]> {
   return missing;
 }
 
-export function forgetAsset(id: string) {
+/** Libera la memoria de un recurso (URL, archivo y audio decodificado) sin tocar lo guardado. */
+export function unloadAsset(id: string) {
   const url = urls.get(id);
   if (url) URL.revokeObjectURL(url);
   urls.delete(id);
   blobs.delete(id);
   audioCache.delete(id);
-  void del(blobKey(id));
+}
+
+/** Libera todos los recursos cargados, al cerrar un proyecto. */
+export function unloadAllAssets() {
+  for (const id of [...urls.keys()]) unloadAsset(id);
+}
+
+/** Borra el archivo guardado. Quien llama debe comprobar antes que ningún proyecto lo usa. */
+export async function deleteAssetFile(id: string) {
+  unloadAsset(id);
+  await del(blobKey(id));
+}
+
+/** Copia el archivo guardado de un recurso con un id nuevo (para duplicar proyectos). */
+export async function copyAssetFile(from: string, to: string): Promise<boolean> {
+  const blob = await get<Blob>(blobKey(from));
+  if (!blob) return false;
+  await set(blobKey(to), blob);
+  return true;
 }
 
 let decodeCtx: OfflineAudioContext | null = null;

@@ -1,5 +1,5 @@
 import { useRef, useState } from "react";
-import { forgetAsset, importFiles } from "../media";
+import { deleteAssetFile, importFiles } from "../media";
 import { useEditor } from "../store";
 import { useUi } from "../ui";
 import { formatTime } from "../util";
@@ -75,7 +75,7 @@ export function MediaBin() {
             onClick={() => {
               if (confirm(`¿Quitar «${a.name}» del proyecto? También se quitará de la línea de tiempo.`)) {
                 removeAsset(a.id);
-                forgetAsset(a.id);
+                void deleteAssetFile(a.id);
               }
             }}
           >

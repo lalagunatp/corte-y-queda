@@ -17,6 +17,8 @@ export function Preview() {
   const duration = useEditor(selectDuration);
   const setPlaying = useEditor((s) => s.setPlaying);
   const setTime = useEditor((s) => s.setTime);
+  const canUndo = useEditor((s) => s.past.length > 0);
+  const canRedo = useEditor((s) => s.future.length > 0);
 
   useEffect(() => {
     const engine = new PreviewEngine();
@@ -132,6 +134,17 @@ export function Preview() {
         )}
       </div>
       <div className="transport">
+        <div className="history">
+          <button className="history-btn" onClick={() => useEditor.getState().undo()} disabled={!canUndo} title="Deshacer el último cambio (Ctrl+Z)">
+            <Icon name="undo" size={16} />
+            <span>Deshacer</span>
+          </button>
+          <button className="history-btn" onClick={() => useEditor.getState().redo()} disabled={!canRedo} title="Rehacer (Ctrl+Y)">
+            <Icon name="redo" size={16} />
+            <span>Rehacer</span>
+          </button>
+        </div>
+        <div className="playback">
         <button className="ghost" onClick={() => setTime(0)} title="Ir al inicio (Inicio)" aria-label="Ir al inicio">
           <Icon name="start" size={16} />
         </button>
@@ -147,18 +160,21 @@ export function Preview() {
         <button className="ghost" onClick={() => setTime(duration)} title="Ir al final (Fin)" aria-label="Ir al final">
           <Icon name="end" size={16} />
         </button>
-        <button
-          className="ghost expand"
-          onClick={() => setExpanded(!expanded)}
-          title={expanded ? "Volver (Esc)" : "Ampliar la vista previa"}
-          aria-label={expanded ? "Volver" : "Ampliar"}
-          disabled={empty}
-        >
-          <Icon name={expanded ? "minimize" : "maximize"} size={16} />
-        </button>
-        <span className="timecode">
-          {formatTime(time, project.fps).slice(0, 5)} / {formatTime(duration, project.fps).slice(0, 5)}
-        </span>
+        </div>
+        <div className="view">
+          <span className="timecode">
+            {formatTime(time, project.fps).slice(0, 5)} / {formatTime(duration, project.fps).slice(0, 5)}
+          </span>
+          <button
+            className="ghost expand"
+            onClick={() => setExpanded(!expanded)}
+            title={expanded ? "Volver (Esc)" : "Ampliar la vista previa"}
+            aria-label={expanded ? "Volver" : "Ampliar"}
+            disabled={empty}
+          >
+            <Icon name={expanded ? "minimize" : "maximize"} size={16} />
+          </button>
+        </div>
       </div>
     </section>
   );

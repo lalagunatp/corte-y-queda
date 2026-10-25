@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { ExportDialog } from "./components/ExportDialog";
 import { Guide } from "./components/Guide";
+import { Home } from "./components/Home";
 import { Icon } from "./components/Icon";
 import { Inspector } from "./components/Inspector";
 import { MediaBin, importIntoProject } from "./components/MediaBin";
@@ -8,7 +9,7 @@ import { Preview } from "./components/Preview";
 import { ProjectSettings } from "./components/ProjectSettings";
 import { Subtitles } from "./components/Subtitles";
 import { Timeline } from "./components/Timeline";
-import { restoreLastProject, startAutosave } from "./persistence";
+import { closeProject, openProject, saveNow, startAutosave, useSave } from "./persistence";
 import { useInstallPrompt } from "./pwa";
 import { installShortcuts } from "./shortcuts";
 import { useEditor } from "./store";
@@ -29,37 +30,72 @@ function Dock({ title, onClose, children }: { title: string; onClose(): void; ch
   );
 }
 
+/** Indicador siempre visible de si el proyecto está guardado en el equipo. */
+function SaveIndicator({ compact }: { compact: boolean }) {
+  const { state } = useSave();
+  const label = state === "saved" ? "Guardado" : state === "error" ? "No se pudo guardar" : "Guardando…";
+  return (
+    <span className={`save-state ${state}`} title={state === "saved" ? "Todos los cambios están guardados en este equipo" : label} aria-live="polite">
+      <Icon name={state === "saved" ? "check" : state === "error" ? "close" : "save"} size={14} />
+      {!compact && label}
+    </span>
+  );
+}
+
+/** Abre la lista de proyectos o el editor. Se arranca en "Mis proyectos". */
 export function App() {
+  const [openId, setOpenId] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+
+  const open = async (id: string) => {
+    setLoading(true);
+    try {
+      const r = await openProject(id);
+      if (r.missing) useEditor.getState().setStatus(`Faltan ${r.missing} archivo(s) de este proyecto`);
+      setOpenId(id);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (loading) return <div className="loading" />;
+  if (!openId) return <Home onOpen={(id) => void open(id)} />;
+  return (
+    <Editor
+      key={openId}
+      onHome={async () => {
+        await closeProject();
+        setOpenId(null);
+      }}
+    />
+  );
+}
+
+function Editor({ onHome }: { onHome(): Promise<void> }) {
   const status = useEditor((s) => s.status);
   const hasClips = useEditor((s) => s.project.clips.length > 0);
   const hasSelection = useEditor((s) => s.selected.length > 0);
-  const canUndo = useEditor((s) => s.past.length > 0);
-  const canRedo = useEditor((s) => s.future.length > 0);
   const projectName = useEditor((s) => s.project.name);
   const s = useEditor.getState;
   const { sheet, setSheet, left, setLeft, exporting, setExporting, help, setHelp } = useUi();
   const compact = useMediaQuery(COMPACT_QUERY);
   const [settings, setSettings] = useState(false);
-  const [ready, setReady] = useState(false);
   const install = useInstallPrompt();
 
   useEffect(() => {
-    let stopAutosave = () => {};
-    let cancelled = false;
-    void restoreLastProject().then((r) => {
-      if (cancelled) return;
-      if (r?.missing) s().setStatus(`Faltan ${r.missing} archivo(s) del proyecto anterior`);
-      stopAutosave = startAutosave();
-      setReady(true);
-      if (!guideSeen()) useUi.getState().setHelp(true);
-    });
+    // El autoguardado empieza después de abrir, para no contar la carga como un cambio.
+    const stopAutosave = startAutosave();
     const stopKeys = installShortcuts();
+    if (!guideSeen()) useUi.getState().setHelp(true);
+    // Guardar también si se cierra la pestaña o la ventana justo después de un cambio.
+    const flush = () => void saveNow();
+    window.addEventListener("pagehide", flush);
     return () => {
-      cancelled = true;
       stopAutosave();
       stopKeys();
+      window.removeEventListener("pagehide", flush);
     };
-  }, [s]);
+  }, []);
 
   useEffect(() => {
     if (!status) return;
@@ -72,8 +108,6 @@ export function App() {
     if (!compact) setSheet(null);
   }, [compact, setSheet]);
 
-  if (!ready) return <div className="loading" />;
-
   return (
     <div
       className={`app ${compact ? "compact" : ""} ${compact && sheet ? "docked" : ""}`}
@@ -85,19 +119,22 @@ export function App() {
       }}
     >
       <header className="topbar">
-        <span className="brand">Corte y Queda</span>
+        <button className="ghost back" onClick={() => void onHome()} title="Volver a Mis proyectos (se guarda antes)">
+          <Icon name="back-arrow" />
+          {!compact && "Proyectos"}
+        </button>
         <span className="sep" />
-        <button className="ghost project" onClick={() => setSettings(true)} title="Ajustes del proyecto">
+        <button className="ghost project" onClick={() => setSettings(true)} title="Nombre y ajustes del proyecto">
           {projectName}
         </button>
+        <SaveIndicator compact={compact} />
         <span className="grow" />
         {status && <span className="status">{status}</span>}
-        <button className="ghost" onClick={() => s().undo()} disabled={!canUndo} title="Deshacer (Ctrl+Z)" aria-label="Deshacer">
-          <Icon name="undo" />
-        </button>
-        <button className="ghost" onClick={() => s().redo()} disabled={!canRedo} title="Rehacer (Ctrl+Y)" aria-label="Rehacer">
-          <Icon name="redo" />
-        </button>
+        {!compact && (
+          <button className="ghost" onClick={() => void saveNow().then(() => s().setStatus("Proyecto guardado"))} title="Guardar ahora (Ctrl+S)">
+            <Icon name="save" /> Guardar
+          </button>
+        )}
         {install && (
           <button className="ghost" onClick={() => void install()} title="Instalar aplicación" aria-label="Instalar">
             <Icon name="download" />

@@ -25,12 +25,12 @@ export function subtitleClips(p: Project): TextClip[] {
   return p.clips.filter((c): c is TextClip => c.type === "text" && c.trackId === track.id).sort((a, b) => a.start - b.start);
 }
 
-export function newProject(): Project {
+export function newProject(opts: { name?: string; width?: number; height?: number } = {}): Project {
   return {
     id: uid("project"),
-    name: "Sin título",
-    width: 1920,
-    height: 1080,
+    name: opts.name ?? "Sin título",
+    width: opts.width ?? 1920,
+    height: opts.height ?? 1080,
     fps: 30,
     background: "#000000",
     tracks: [
@@ -68,7 +68,6 @@ interface EditorState {
 
   setStatus(s: string | null): void;
   loadProject(p: Project): void;
-  resetProject(): void;
   setTime(t: number): void;
   setPlaying(p: boolean): void;
   setZoom(z: number): void;
@@ -110,7 +109,6 @@ export const useEditor = create<EditorState>((set, get) => ({
 
   setStatus: (status) => set({ status }),
   loadProject: (project) => set({ project, past: [], future: [], selected: [], time: 0, playing: false }),
-  resetProject: () => set({ project: newProject(), past: [], future: [], selected: [], time: 0, playing: false }),
   setTime: (t) => set({ time: Math.max(0, t) }),
   setPlaying: (playing) => set({ playing }),
   setZoom: (z) => set({ zoom: Math.min(400, Math.max(8, z)) }),
