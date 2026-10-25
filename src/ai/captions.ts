@@ -4,12 +4,36 @@ import type { CaptionChunk, CaptionMessage } from "./captionsWorker";
 
 const WHISPER_RATE = 16000;
 
-// La variante exacta (y su tamaño) depende del equipo; la descarga real se muestra al generar.
+/**
+ * Calidades ofrecidas. La variante exacta (y su tamaño) depende del equipo; la descarga real se
+ * muestra al generar. `speed` es la fracción de la duración del clip que tardó con aceleración
+ * gráfica en las pruebas (base: 61 s para 2:23); `downloadMB` es el rango aproximado GPU/CPU.
+ */
 export const CAPTION_MODELS = [
-  { id: "onnx-community/whisper-base", label: "Equilibrado (Whisper base)" },
-  { id: "onnx-community/whisper-tiny", label: "Rápido (Whisper tiny)" },
-  { id: "onnx-community/whisper-small", label: "Preciso (Whisper small)" },
+  { id: "onnx-community/whisper-tiny", name: "Rápida", hint: "Menos exacta", speed: 0.25, downloadMB: "40–60" },
+  { id: "onnx-community/whisper-base", name: "Normal", hint: "Recomendada", speed: 0.45, downloadMB: "80–150" },
+  { id: "onnx-community/whisper-small", name: "Precisa", hint: "Más lenta", speed: 1, downloadMB: "250–480" },
 ];
+export const DEFAULT_CAPTION_MODEL = CAPTION_MODELS[1].id;
+
+const READY_KEY = (model: string) => `corte-y-queda:asr-ready:${model}`;
+
+/** Si el modelo ya se usó con éxito en este navegador (y por tanto está descargado). */
+export function captionModelReady(model: string): boolean {
+  try {
+    return localStorage.getItem(READY_KEY(model)) === "1";
+  } catch {
+    return false;
+  }
+}
+
+function markCaptionModelReady(model: string) {
+  try {
+    localStorage.setItem(READY_KEY(model), "1");
+  } catch {
+    // Sin almacenamiento solo se pierde el aviso de "primera vez".
+  }
+}
 
 /** Extrae el tramo del clip como audio mono a 16 kHz, el formato que espera Whisper. */
 async function clipAudio16k(c: MediaClip): Promise<Float32Array> {
@@ -70,6 +94,7 @@ export async function generateCaptions(
       worker.onerror = (e) => reject(new Error(e.message || "No se pudo iniciar el reconocimiento de voz"));
       worker.postMessage({ audio, language: opts.language, model: opts.model }, [audio.buffer]);
     });
+    markCaptionModelReady(opts.model);
     // Las marcas de Whisper son relativas al tramo extraído, que ya está a la velocidad del clip.
     return chunks
       .flatMap((ch) => splitLong(ch.text, ch.start, ch.end))

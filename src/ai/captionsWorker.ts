@@ -69,7 +69,9 @@ async function load(model: string, device: Device): Promise<AutomaticSpeechRecog
         done += f.loaded;
         total += f.total;
       }
-      post({ type: "progress", stage: `Descargando modelo · ${(done / 1e6).toFixed(0)} de ${(total / 1e6).toFixed(0)} MB`, fraction: done / total });
+      // Los mismos eventos llegan al leer de la caché, así que el texto no presupone una descarga.
+      if (total < 1e6) return;
+      post({ type: "progress", stage: `Preparando el reconocimiento de voz · ${(done / 1e6).toFixed(0)} de ${(total / 1e6).toFixed(0)} MB`, fraction: done / total });
     },
   })) as AutomaticSpeechRecognitionPipeline;
   loaded = { key, asr };
@@ -104,12 +106,12 @@ function segments(audio: Float32Array): [number, number][] {
 }
 
 async function transcribe(req: CaptionRequest, device: Device): Promise<CaptionChunk[]> {
-  post({ type: "progress", stage: "Cargando modelo", fraction: null });
+  post({ type: "progress", stage: "Preparando el reconocimiento de voz", fraction: null });
   const asr = await load(req.model, device);
   const parts = segments(req.audio);
   const chunks: CaptionChunk[] = [];
   for (let i = 0; i < parts.length; i++) {
-    post({ type: "progress", stage: `Transcribiendo tramo ${i + 1} de ${parts.length} · ${chunks.length} frases`, fraction: i / parts.length });
+    post({ type: "progress", stage: `Escuchando parte ${i + 1} de ${parts.length} · ${chunks.length} frases encontradas`, fraction: i / parts.length });
     const [a, b] = parts[i];
     const offset = a / RATE;
     const out = await asr(req.audio.subarray(a, b), {

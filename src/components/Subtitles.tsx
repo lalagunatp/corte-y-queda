@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { CAPTION_MODELS, generateCaptions } from "../ai/captions";
+import { CAPTION_MODELS, DEFAULT_CAPTION_MODEL, captionModelReady, generateCaptions } from "../ai/captions";
 import { saveFile } from "../platform";
 import { DEFAULT_SUBTITLE_STYLE, subtitleClips, subtitleStyleOf, useEditor } from "../store";
 import { formatEditable, parseEditable, parseSubtitles, toSrt } from "../subtitles";
@@ -58,7 +58,7 @@ function Generate({ onDone }: { onDone(n: number): void }) {
   const sources = clips.filter((c): c is MediaClip => c.type === "media" && kinds.get(c.assetId)?.kind !== "image").sort((a, b) => a.start - b.start);
   const [source, setSource] = useState<string>(preferred && sources.some((c) => c.id === preferred) ? preferred : (sources[0]?.id ?? ""));
   const [language, setLanguage] = useState("spanish");
-  const [model, setModel] = useState(CAPTION_MODELS[0].id);
+  const [model, setModel] = useState(DEFAULT_CAPTION_MODEL);
   const [busy, setBusy] = useState<{ stage: string; fraction: number | null } | null>(null);
   const [error, setError] = useState<string | null>(null);
   const abort = useRef<AbortController | null>(null);
@@ -96,52 +96,95 @@ function Generate({ onDone }: { onDone(n: number): void }) {
     }
   };
 
-  if (!sources.length) return <p className="muted small">Añade un video o audio con voz para generar subtítulos.</p>;
+  if (!sources.length) {
+    return (
+      <div className="gen">
+        <p className="lead">Primero añade a la línea de tiempo el video (o audio) donde se habla.</p>
+      </div>
+    );
+  }
+
+  const quality = CAPTION_MODELS.find((m) => m.id === model) ?? CAPTION_MODELS[1];
+  const firstTime = !captionModelReady(model);
+  const estimate = clip ? estimateMinutes(clip.duration * quality.speed) : "";
 
   return (
     <div className="gen">
-      <label className="stack">
-        <span>Clip con voz</span>
-        <select value={source} onChange={(e) => setSource(e.target.value)} disabled={!!busy}>
-          {sources.map((c) => (
-            <option key={c.id} value={c.id}>
-              {formatEditable(c.start)} · {kinds.get(c.assetId)?.name}
-            </option>
-          ))}
-        </select>
+      <p className="lead">La app escucha el audio y escribe sola lo que se dice, con sus tiempos.</p>
+
+      <label className="step">
+        <span className="num">1</span>
+        <span className="step-body">
+          <b>¿De qué video?</b>
+          <select value={source} onChange={(e) => setSource(e.target.value)} disabled={!!busy}>
+            {sources.map((c) => (
+              <option key={c.id} value={c.id}>
+                {kinds.get(c.assetId)?.name} · empieza en {formatEditable(c.start)}
+              </option>
+            ))}
+          </select>
+        </span>
       </label>
-      <div className="inline">
-        <select value={language} onChange={(e) => setLanguage(e.target.value)} disabled={!!busy} aria-label="Idioma">
-          {LANGUAGES.map(([v, l]) => (
-            <option key={v} value={v}>{l}</option>
-          ))}
-        </select>
-        {busy ? (
-          <button onClick={() => abort.current?.abort()}>Cancelar</button>
-        ) : (
-          <button className="primary" onClick={run} disabled={!clip}>
-            <Icon name="sparkles" /> Generar
-          </button>
-        )}
+
+      <label className="step">
+        <span className="num">2</span>
+        <span className="step-body">
+          <b>¿En qué idioma hablan?</b>
+          <select value={language} onChange={(e) => setLanguage(e.target.value)} disabled={!!busy}>
+            {LANGUAGES.map(([v, l]) => (
+              <option key={v} value={v}>{l}</option>
+            ))}
+          </select>
+        </span>
+      </label>
+
+      <div className="step">
+        <span className="num">3</span>
+        <span className="step-body">
+          <b>Calidad</b>
+          <div className="segmented">
+            {CAPTION_MODELS.map((m) => (
+              <button key={m.id} className={model === m.id ? "on" : ""} onClick={() => setModel(m.id)} disabled={!!busy}>
+                <b>{m.name}</b>
+                <small>{m.hint}</small>
+              </button>
+            ))}
+          </div>
+        </span>
       </div>
-      {busy && (
-        <div className={`progress slim ${busy.fraction == null ? "indeterminate" : ""}`} role="progressbar" aria-valuenow={busy.fraction == null ? undefined : Math.round(busy.fraction * 100)}>
-          <div style={{ width: busy.fraction == null ? undefined : `${Math.max(3, busy.fraction * 100)}%` }} />
-          <span>{busy.stage}</span>
-        </div>
+
+      {busy ? (
+        <>
+          <div className={`progress slim ${busy.fraction == null ? "indeterminate" : ""}`} role="progressbar" aria-valuenow={busy.fraction == null ? undefined : Math.round(busy.fraction * 100)}>
+            <div style={{ width: busy.fraction == null ? undefined : `${Math.max(3, busy.fraction * 100)}%` }} />
+            <span>{busy.stage}</span>
+          </div>
+          <button className="wide" onClick={() => abort.current?.abort()}>
+            Cancelar
+          </button>
+        </>
+      ) : (
+        <button className="primary wide big" onClick={run} disabled={!clip}>
+          <Icon name="sparkles" /> Crear subtítulos
+        </button>
       )}
-      {error && <p className="error small">{error}</p>}
-      <details>
-        <summary>Modelo</summary>
-        <select value={model} onChange={(e) => setModel(e.target.value)} disabled={!!busy}>
-          {CAPTION_MODELS.map((m) => (
-            <option key={m.id} value={m.id}>{m.label}</option>
-          ))}
-        </select>
-        <p className="muted small">Se ejecuta en tu equipo; la primera vez descarga el modelo. Revisa el texto generado.</p>
-      </details>
+
+      {error && <p className="error">{error}</p>}
+
+      <ul className="facts">
+        <li>Tardará {estimate}. Deja este panel abierto mientras trabaja.</li>
+        {firstTime && <li>La primera vez se descarga el reconocimiento de voz ({quality.downloadMB} MB). Solo ocurre una vez.</li>}
+        <li>Tu audio no se sube a internet: todo se hace en este equipo.</li>
+      </ul>
     </div>
   );
+}
+
+/** Rango aproximado: lo medido con aceleración gráfica hasta el triple en equipos sin ella. */
+function estimateMinutes(seconds: number): string {
+  const low = Math.max(1, Math.round(seconds / 60));
+  const high = Math.max(low + 1, Math.round((seconds * 3) / 60));
+  return seconds < 45 ? "menos de 1 minuto" : `entre ${low} y ${high} minutos`;
 }
 
 function Style({ lines }: { lines: TextClip[] }) {
@@ -197,6 +240,7 @@ export function Subtitles() {
   const s = useEditor.getState;
   const [focusId, setFocusId] = useState<string | null>(null);
   const [open, setOpen] = useState<"generate" | "style" | null>(lines.length ? null : "generate");
+  const [review, setReview] = useState<number | null>(null);
   const fileInput = useRef<HTMLInputElement>(null);
   const list = useRef<HTMLDivElement>(null);
 
@@ -255,12 +299,12 @@ export function Subtitles() {
 
   return (
     <div className="subs">
+      <button className={`auto-toggle wide ${open === "generate" ? "on" : "primary"}`} onClick={() => setOpen(open === "generate" ? null : "generate")}>
+        <Icon name="sparkles" /> {open === "generate" ? "Ocultar creación automática" : "Crear automáticamente"}
+      </button>
       <div className="subs-actions">
-        <button className="primary" onClick={add} title="Añadir un subtítulo en la posición del cabezal">
-          <Icon name="plus" /> Añadir
-        </button>
-        <button className={open === "generate" ? "on" : ""} onClick={() => setOpen(open === "generate" ? null : "generate")}>
-          <Icon name="sparkles" /> Auto
+        <button onClick={add} title="Añadir un subtítulo en la posición de la línea verde">
+          <Icon name="plus" /> Añadir a mano
         </button>
         <button className={open === "style" ? "on" : ""} onClick={() => setOpen(open === "style" ? null : "style")} disabled={!lines.length}>
           <Icon name="type" /> Estilo
@@ -291,12 +335,32 @@ export function Subtitles() {
         />
       </div>
 
-      {open === "generate" && <Generate onDone={(n) => (setOpen(null), s().setStatus(`${n} subtítulos generados`))} />}
+      {open === "generate" && (
+        <Generate
+          onDone={(n) => {
+            setOpen(null);
+            setReview(n);
+            s().setStatus(`${n} subtítulos creados`);
+          }}
+        />
+      )}
       {open === "style" && <Style lines={lines} />}
 
+      {review != null && lines.length > 0 && (
+        <div className="notice">
+          <Icon name="check" />
+          <p>
+            <b>Listo: {review} frases.</b> Revísalas: toca el número de una frase para escucharla y corrige el texto si algo no se entendió bien.
+          </p>
+          <button className="ghost square" onClick={() => setReview(null)} aria-label="Cerrar aviso">
+            <Icon name="close" size={14} />
+          </button>
+        </div>
+      )}
+
       {lines.length === 0 ? (
-        <p className="muted small subs-empty">
-          Sin subtítulos. Mueve el cabezal al momento deseado y pulsa <b>Añadir</b>, o genéralos con <b>Auto</b>.
+        <p className="lead subs-empty">
+          Aún no hay subtítulos. Usa <b>Crear automáticamente</b> para sacarlos de la voz del video, o <b>Añadir a mano</b> para escribir uno donde está la línea verde.
         </p>
       ) : (
         <div className="subs-list" ref={list}>
