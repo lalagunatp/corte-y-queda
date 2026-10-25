@@ -3,6 +3,8 @@
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
+        // Abre los enlaces externos (bibliotecas de música) en el navegador del sistema.
+        .plugin(tauri_plugin_opener::init())
         .run(tauri::generate_context!())
         .expect("no se pudo iniciar Corte y Queda");
 }

@@ -3,6 +3,7 @@ import { CAPTION_MODELS, generateCaptions } from "../ai/captions";
 import { useEditor } from "../store";
 import type { MediaClip, TextClip } from "../types";
 import { COMPACT_QUERY, useMediaQuery, useUi } from "../ui";
+import { Icon } from "./Icon";
 
 function Slider(props: { label: string; value: number; min: number; max: number; step: number; unit?: string; onChange(v: number): void }) {
   const begin = useEditor((s) => s.beginGesture);
@@ -29,13 +30,12 @@ function Slider(props: { label: string; value: number; min: number; max: number;
   );
 }
 
-function Choices<T extends string | number>(props: { options: { value: T; icon: string; label: string }[]; value: T | null; onPick(v: T): void }) {
+function Segmented<T extends string | number>(props: { options: { value: T; label: string }[]; value: T | null; onPick(v: T): void }) {
   return (
-    <div className="choices">
+    <div className="segmented">
       {props.options.map((o) => (
-        <button key={String(o.value)} className={`choice ${props.value === o.value ? "on" : ""}`} onClick={() => props.onPick(o.value)}>
-          <span className="ico">{o.icon}</span>
-          <b>{o.label}</b>
+        <button key={String(o.value)} className={props.value === o.value ? "on" : ""} onClick={() => props.onPick(o.value)}>
+          {o.label}
         </button>
       ))}
     </div>
@@ -44,20 +44,20 @@ function Choices<T extends string | number>(props: { options: { value: T; icon: 
 
 function Toggle({ on, label, onChange }: { on: boolean; label: string; onChange(v: boolean): void }) {
   return (
-    <button className={`toggle ${on ? "on" : ""}`} onClick={() => onChange(!on)} aria-pressed={on}>
+    <button className={`toggle ${on ? "on" : ""}`} onClick={() => onChange(!on)} role="switch" aria-checked={on}>
+      <span>{label}</span>
       <span className="knob" />
-      {label}
     </button>
   );
 }
 
 const FILTERS = [
-  { name: "Normal", brightness: 1, contrast: 1, saturation: 1 },
-  { name: "Brillante", brightness: 1.2, contrast: 1.05, saturation: 1.1 },
+  { name: "Original", brightness: 1, contrast: 1, saturation: 1 },
+  { name: "Claro", brightness: 1.2, contrast: 1.05, saturation: 1.1 },
   { name: "Vivo", brightness: 1.05, contrast: 1.15, saturation: 1.6 },
   { name: "Suave", brightness: 1.08, contrast: 0.88, saturation: 0.85 },
-  { name: "Dramático", brightness: 0.85, contrast: 1.35, saturation: 1.1 },
-  { name: "Blanco y negro", brightness: 1, contrast: 1.15, saturation: 0 },
+  { name: "Contraste", brightness: 0.85, contrast: 1.35, saturation: 1.1 },
+  { name: "B/N", brightness: 1, contrast: 1.15, saturation: 0 },
 ];
 
 const FADE = 0.6;
@@ -72,7 +72,7 @@ function DeleteButton({ id }: { id: string }) {
         useUi.getState().setSheet(null);
       }}
     >
-      🗑️ Borrar este trozo
+      <Icon name="trash" /> Eliminar clip
     </button>
   );
 }
@@ -84,7 +84,7 @@ const LANGUAGES: [string, string][] = [
   ["french", "Francés"],
   ["german", "Alemán"],
   ["italian", "Italiano"],
-  ["", "Otro (lo detecta solo)"],
+  ["", "Detectar automáticamente"],
 ];
 
 function Captions({ clip }: { clip: MediaClip }) {
@@ -104,7 +104,7 @@ function Captions({ clip }: { clip: MediaClip }) {
         model,
         onProgress: (stage, f) => setBusy(f == null ? stage : `${stage} ${Math.round(f * 100)}%`),
       });
-      if (!clips.length) setError("No se escuchó a nadie hablando en este trozo.");
+      if (!clips.length) setError("No se detectó voz en este clip.");
       else {
         addTextClips(clips, "Subtítulos");
         setDone(true);
@@ -118,28 +118,28 @@ function Captions({ clip }: { clip: MediaClip }) {
 
   return (
     <section className="group">
-      <h4>✨ Subtítulos automáticos</h4>
-      <p className="hint">Escribe solo lo que se dice en el video. La primera vez tarda un poco más.</p>
-      <label className="stack">
-        <span>¿En qué idioma hablan?</span>
-        <select value={language} onChange={(e) => setLanguage(e.target.value)} disabled={!!busy}>
+      <h4>Subtítulos automáticos</h4>
+      <div className="inline">
+        <select value={language} onChange={(e) => setLanguage(e.target.value)} disabled={!!busy} aria-label="Idioma">
           {LANGUAGES.map(([v, l]) => (
             <option key={v} value={v}>{l}</option>
           ))}
         </select>
-      </label>
-      <button className="primary big wide" onClick={run} disabled={!!busy}>
-        {busy ? `⏳ ${busy}` : "✨ Crear subtítulos"}
-      </button>
-      {done && <p className="ok">✅ ¡Listo! Revisa los textos en la línea de tiempo.</p>}
-      {error && <p className="error">{error}</p>}
+        <button onClick={run} disabled={!!busy}>
+          <Icon name="sparkles" /> {busy ? "…" : "Generar"}
+        </button>
+      </div>
+      {busy && <p className="muted small">{busy}</p>}
+      {done && <p className="ok small">Subtítulos añadidos a la línea de tiempo.</p>}
+      {error && <p className="error small">{error}</p>}
       <details>
-        <summary>Más opciones</summary>
+        <summary>Modelo</summary>
         <select value={model} onChange={(e) => setModel(e.target.value)} disabled={!!busy}>
           {CAPTION_MODELS.map((m) => (
             <option key={m.id} value={m.id}>{m.label}</option>
           ))}
         </select>
+        <p className="muted small">Se ejecuta en tu equipo. La primera vez descarga el modelo.</p>
       </details>
     </section>
   );
@@ -161,12 +161,12 @@ function MediaInspector({ clip }: { clip: MediaClip }) {
   return (
     <>
       <h3 title={asset?.name}>
-        {asset?.kind === "audio" ? "🎵" : asset?.kind === "image" ? "🖼️" : "🎬"} {asset?.name ?? "Trozo"}
+        <Icon name={asset?.kind === "audio" ? "music" : asset?.kind === "image" ? "image" : "film"} /> {asset?.name ?? "Clip"}
       </h3>
 
       {visual && (
         <section className="group">
-          <h4>🎨 Filtro</h4>
+          <h4>Filtro</h4>
           <div className="filters">
             {FILTERS.map((f) => (
               <button
@@ -190,14 +190,15 @@ function MediaInspector({ clip }: { clip: MediaClip }) {
 
       {asset?.kind !== "image" && (
         <section className="group">
-          <h4>⏩ Velocidad</h4>
-          <Choices
-            value={[0.5, 1, 2].includes(clip.speed) ? clip.speed : null}
+          <h4>Velocidad</h4>
+          <Segmented
+            value={[0.5, 1, 1.5, 2].includes(clip.speed) ? clip.speed : null}
             onPick={setSpeed}
             options={[
-              { value: 0.5, icon: "🐢", label: "Lento" },
-              { value: 1, icon: "🚶", label: "Normal" },
-              { value: 2, icon: "🐇", label: "Rápido" },
+              { value: 0.5, label: "0.5×" },
+              { value: 1, label: "1×" },
+              { value: 1.5, label: "1.5×" },
+              { value: 2, label: "2×" },
             ]}
           />
         </section>
@@ -205,50 +206,71 @@ function MediaInspector({ clip }: { clip: MediaClip }) {
 
       {audible && (
         <section className="group">
-          <h4>🔊 Sonido</h4>
-          <div className="row">
-            <button className={`icon-btn ${clip.volume === 0 ? "on" : ""}`} onClick={() => u({ volume: clip.volume === 0 ? 1 : 0 })}>
-              {clip.volume === 0 ? "🔇 Sin sonido" : "🔈 Silenciar"}
+          <h4>Audio</h4>
+          <div className="inline">
+            <button className="ghost square" onClick={() => u({ volume: clip.volume === 0 ? 1 : 0 })} aria-label={clip.volume === 0 ? "Activar sonido" : "Silenciar"}>
+              <Icon name={clip.volume === 0 ? "mute" : "volume"} />
             </button>
+            <input
+              type="range"
+              min={0}
+              max={2}
+              step={0.05}
+              value={clip.volume}
+              onPointerDown={() => useEditor.getState().beginGesture()}
+              onPointerUp={() => useEditor.getState().endGesture()}
+              onChange={(e) => u({ volume: Number(e.target.value) })}
+              aria-label="Volumen"
+            />
+            <output className="muted small">{Math.round(clip.volume * 100)}%</output>
           </div>
-          <Slider label="Volumen" value={clip.volume} min={0} max={2} step={0.05} unit="×" onChange={(v) => u({ volume: v })} />
-          <Toggle on={clip.voiceClean} label="🎙️ Mejorar la voz (menos ruido)" onChange={(v) => u({ voiceClean: v })} />
+          <Toggle on={clip.voiceClean} label="Mejorar voz" onChange={(v) => u({ voiceClean: v })} />
         </section>
       )}
 
       <section className="group">
-        <h4>✨ Efectos</h4>
-        <Toggle on={clip.fadeIn > 0} label="🌅 Aparecer suave" onChange={(v) => u({ fadeIn: v ? Math.min(FADE, clip.duration / 2) : 0 })} />
-        <Toggle on={clip.fadeOut > 0} label="🌇 Desaparecer suave" onChange={(v) => u({ fadeOut: v ? Math.min(FADE, clip.duration / 2) : 0 })} />
-        {visual && (
-          <div className="row">
-            <button onClick={() => u({ rotation: (clip.rotation + 90) % 360 })}>🔄 Girar</button>
-            <button onClick={() => u({ scale: Math.min(4, clip.scale * 1.15) })}>🔍 Acercar</button>
-            <button onClick={() => u({ scale: Math.max(0.2, clip.scale / 1.15) })}>🔎 Alejar</button>
-          </div>
-        )}
+        <h4>Transiciones</h4>
+        <Toggle on={clip.fadeIn > 0} label="Fundido de entrada" onChange={(v) => u({ fadeIn: v ? Math.min(FADE, clip.duration / 2) : 0 })} />
+        <Toggle on={clip.fadeOut > 0} label="Fundido de salida" onChange={(v) => u({ fadeOut: v ? Math.min(FADE, clip.duration / 2) : 0 })} />
       </section>
+
+      {visual && (
+        <section className="group">
+          <h4>Encuadre</h4>
+          <div className="inline">
+            <button onClick={() => u({ rotation: (clip.rotation + 90) % 360 })} title="Girar 90°">
+              <Icon name="rotate" /> Girar
+            </button>
+            <button className="square" onClick={() => u({ scale: Math.max(0.2, clip.scale / 1.15) })} aria-label="Alejar">
+              <Icon name="zoomOut" />
+            </button>
+            <button className="square" onClick={() => u({ scale: Math.min(4, clip.scale * 1.15) })} aria-label="Acercar">
+              <Icon name="zoomIn" />
+            </button>
+          </div>
+        </section>
+      )}
 
       {audible && <Captions clip={clip} />}
 
       <details className="group">
-        <summary>🛠️ Más opciones</summary>
+        <summary>Avanzado</summary>
         <Slider label="Duración" value={clip.duration} min={0.1} max={Math.max(0.1, maxDuration)} step={0.05} unit="s" onChange={(v) => u({ duration: v })} />
         {asset?.kind !== "image" && <Slider label="Velocidad" value={clip.speed} min={0.25} max={4} step={0.05} unit="×" onChange={setSpeed} />}
-        <Slider label="Aparecer" value={clip.fadeIn} min={0} max={Math.min(5, clip.duration)} step={0.05} unit="s" onChange={(v) => u({ fadeIn: v })} />
-        <Slider label="Desaparecer" value={clip.fadeOut} min={0} max={Math.min(5, clip.duration)} step={0.05} unit="s" onChange={(v) => u({ fadeOut: v })} />
+        <Slider label="Entrada" value={clip.fadeIn} min={0} max={Math.min(5, clip.duration)} step={0.05} unit="s" onChange={(v) => u({ fadeIn: v })} />
+        <Slider label="Salida" value={clip.fadeOut} min={0} max={Math.min(5, clip.duration)} step={0.05} unit="s" onChange={(v) => u({ fadeOut: v })} />
         {visual && (
           <>
-            <Slider label="Tamaño" value={clip.scale} min={0.1} max={4} step={0.01} unit="×" onChange={(v) => u({ scale: v })} />
-            <Slider label="Mover ↔" value={clip.x} min={-2} max={2} step={0.01} onChange={(v) => u({ x: v })} />
-            <Slider label="Mover ↕" value={clip.y} min={-2} max={2} step={0.01} onChange={(v) => u({ y: v })} />
-            <Slider label="Girar" value={clip.rotation} min={-180} max={180} step={1} unit="°" onChange={(v) => u({ rotation: v })} />
-            <Slider label="Transparencia" value={clip.opacity} min={0} max={1} step={0.01} onChange={(v) => u({ opacity: v })} />
+            <Slider label="Escala" value={clip.scale} min={0.1} max={4} step={0.01} unit="×" onChange={(v) => u({ scale: v })} />
+            <Slider label="Posición X" value={clip.x} min={-2} max={2} step={0.01} onChange={(v) => u({ x: v })} />
+            <Slider label="Posición Y" value={clip.y} min={-2} max={2} step={0.01} onChange={(v) => u({ y: v })} />
+            <Slider label="Rotación" value={clip.rotation} min={-180} max={180} step={1} unit="°" onChange={(v) => u({ rotation: v })} />
+            <Slider label="Opacidad" value={clip.opacity} min={0} max={1} step={0.01} onChange={(v) => u({ opacity: v })} />
             <Slider label="Brillo" value={clip.brightness} min={0} max={2} step={0.01} onChange={(v) => u({ brightness: v })} />
             <Slider label="Contraste" value={clip.contrast} min={0} max={2} step={0.01} onChange={(v) => u({ contrast: v })} />
-            <Slider label="Color" value={clip.saturation} min={0} max={3} step={0.01} onChange={(v) => u({ saturation: v })} />
+            <Slider label="Saturación" value={clip.saturation} min={0} max={3} step={0.01} onChange={(v) => u({ saturation: v })} />
             <button onClick={() => u({ x: 0, y: 0, scale: 1, rotation: 0, opacity: 1, brightness: 1, contrast: 1, saturation: 1 })}>
-              ↺ Dejar la imagen como estaba
+              Restablecer imagen
             </button>
           </>
         )}
@@ -259,7 +281,7 @@ function MediaInspector({ clip }: { clip: MediaClip }) {
   );
 }
 
-const TEXT_COLORS = ["#ffffff", "#000000", "#facc15", "#f87171", "#60a5fa", "#4ade80", "#f472b6", "#fb923c"];
+const TEXT_COLORS = ["#ffffff", "#111111", "#facc15", "#f87171", "#60a5fa", "#4ade80", "#f472b6", "#fb923c"];
 
 function TextInspector({ clip }: { clip: TextClip }) {
   const update = useEditor((s) => s.updateClip);
@@ -267,68 +289,67 @@ function TextInspector({ clip }: { clip: TextClip }) {
   const bgOn = !/^#[0-9a-f]{6}00$/i.test(clip.background);
   return (
     <>
-      <h3>🔤 Texto</h3>
+      <h3>
+        <Icon name="type" /> Texto
+      </h3>
       <section className="group">
-        <label className="stack">
-          <span>Escribe tu texto</span>
-          <textarea value={clip.text} rows={2} onChange={(e) => u({ text: e.target.value })} autoFocus={clip.text === "Escribe aquí"} />
-        </label>
+        <textarea value={clip.text} rows={2} onChange={(e) => u({ text: e.target.value })} autoFocus={clip.text === "Escribe aquí"} aria-label="Texto" />
       </section>
       <section className="group">
-        <h4>📏 Tamaño</h4>
-        <Choices
+        <h4>Tamaño</h4>
+        <Segmented
           value={clip.fontSize}
           onPick={(fontSize) => u({ fontSize })}
           options={[
-            { value: 48, icon: "a", label: "Pequeño" },
-            { value: 80, icon: "A", label: "Mediano" },
-            { value: 130, icon: "𝐀", label: "Grande" },
+            { value: 48, label: "S" },
+            { value: 80, label: "M" },
+            { value: 130, label: "L" },
           ]}
         />
       </section>
       <section className="group">
-        <h4>🎨 Color</h4>
+        <h4>Color</h4>
         <div className="swatches">
           {TEXT_COLORS.map((c) => (
             <button key={c} className={`swatch ${clip.color === c ? "on" : ""}`} style={{ background: c }} onClick={() => u({ color: c })} aria-label={`Color ${c}`} />
           ))}
         </div>
-        <Toggle on={bgOn} label="⬛ Con fondo" onChange={(v) => u({ background: v ? "#000000aa" : "#00000000" })} />
-        <Toggle on={clip.bold} label="𝐁 Letra gruesa" onChange={(bold) => u({ bold })} />
+        <Toggle on={bgOn} label="Fondo" onChange={(v) => u({ background: v ? "#000000aa" : "#00000000" })} />
+        <Toggle on={clip.bold} label="Negrita" onChange={(bold) => u({ bold })} />
       </section>
       <section className="group">
-        <h4>📍 ¿Dónde va?</h4>
-        <Choices
+        <h4>Posición</h4>
+        <Segmented
           value={clip.y}
           onPick={(y) => u({ y, x: 0 })}
           options={[
-            { value: -0.7, icon: "⬆️", label: "Arriba" },
-            { value: 0, icon: "⏺️", label: "Centro" },
-            { value: 0.7, icon: "⬇️", label: "Abajo" },
+            { value: -0.7, label: "Arriba" },
+            { value: 0, label: "Centro" },
+            { value: 0.7, label: "Abajo" },
           ]}
         />
       </section>
       <section className="group">
-        <h4>✨ Efectos</h4>
-        <Toggle on={clip.fadeIn > 0} label="🌅 Aparecer suave" onChange={(v) => u({ fadeIn: v ? Math.min(FADE, clip.duration / 2) : 0 })} />
-        <Toggle on={clip.fadeOut > 0} label="🌇 Desaparecer suave" onChange={(v) => u({ fadeOut: v ? Math.min(FADE, clip.duration / 2) : 0 })} />
-        <Slider label="Dura" value={clip.duration} min={0.5} max={60} step={0.5} unit="s" onChange={(v) => u({ duration: v })} />
+        <h4>Transiciones</h4>
+        <Toggle on={clip.fadeIn > 0} label="Fundido de entrada" onChange={(v) => u({ fadeIn: v ? Math.min(FADE, clip.duration / 2) : 0 })} />
+        <Toggle on={clip.fadeOut > 0} label="Fundido de salida" onChange={(v) => u({ fadeOut: v ? Math.min(FADE, clip.duration / 2) : 0 })} />
+        <Slider label="Duración" value={clip.duration} min={0.5} max={60} step={0.5} unit="s" onChange={(v) => u({ duration: v })} />
       </section>
       <details className="group">
-        <summary>🛠️ Más opciones</summary>
+        <summary>Avanzado</summary>
         <Slider label="Tamaño" value={clip.fontSize} min={12} max={300} step={1} unit="px" onChange={(v) => u({ fontSize: v })} />
         <label className="field">
-          <span>Otro color</span>
+          <span>Color</span>
           <input type="color" value={clip.color} onChange={(e) => u({ color: e.target.value })} />
         </label>
         {bgOn && (
           <label className="field">
-            <span>Color del fondo</span>
+            <span>Fondo</span>
             <input type="color" value={clip.background.slice(0, 7)} onChange={(e) => u({ background: `${e.target.value}aa` })} />
           </label>
         )}
-        <Slider label="Mover ↔" value={clip.x} min={-1} max={1} step={0.01} onChange={(v) => u({ x: v })} />
-        <Slider label="Mover ↕" value={clip.y} min={-1} max={1} step={0.01} onChange={(v) => u({ y: v })} />
+        <Slider label="Posición X" value={clip.x} min={-1} max={1} step={0.01} onChange={(v) => u({ x: v })} />
+        <Slider label="Posición Y" value={clip.y} min={-1} max={1} step={0.01} onChange={(v) => u({ y: v })} />
       </details>
       <DeleteButton id={clip.id} />
     </>
@@ -342,18 +363,16 @@ export function Inspector() {
   const compact = useMediaQuery(COMPACT_QUERY);
   return (
     <aside className="inspector">
-      {!compact && <h2 className="panel-title">🎨 Editar</h2>}
+      {!compact && <h2 className="panel-title">Editar</h2>}
       {!clip && (
         <div className="empty">
-          <div className="big-ico">👆</div>
-          <p>
-            <b>Toca un trozo</b> en la línea de tiempo de abajo para cambiarlo.
-          </p>
-          <button className="big wide" onClick={() => addText()}>🔤 Añadir un texto</button>
-          <p className="hint">Truco: para pasar suave de un trozo a otro, activa «Desaparecer suave» en uno y «Aparecer suave» en el siguiente.</p>
+          <p className="muted">Selecciona un clip en la línea de tiempo para editarlo.</p>
+          <button onClick={() => addText()}>
+            <Icon name="type" /> Añadir texto
+          </button>
         </div>
       )}
-      {clip && selected.length > 1 && <p className="hint">Elegiste {selected.length} trozos; aquí ves el primero.</p>}
+      {clip && selected.length > 1 && <p className="muted small">{selected.length} clips seleccionados · se muestra el primero</p>}
       {clip?.type === "media" && <MediaInspector clip={clip} />}
       {clip?.type === "text" && <TextInspector clip={clip} />}
     </aside>

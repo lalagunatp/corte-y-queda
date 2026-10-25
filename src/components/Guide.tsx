@@ -1,27 +1,12 @@
 import { useState } from "react";
 import { markGuideSeen } from "../ui";
+import { Icon, type IconName } from "./Icon";
 
-const STEPS = [
-  {
-    icon: "📁",
-    title: "1. Trae tus videos y fotos",
-    text: "Toca «Mis archivos» y luego «Añadir videos y fotos». Toca un archivo para ponerlo en tu video.",
-  },
-  {
-    icon: "✂️",
-    title: "2. Ordénalos abajo",
-    text: "Abajo está la línea de tiempo. Arrastra los trozos para moverlos. Usa ✂️ Cortar para partir y 🗑️ Borrar para quitar.",
-  },
-  {
-    icon: "🎨",
-    title: "3. Ponle tu estilo",
-    text: "Toca un trozo y luego «Editar»: filtros, velocidad 🐢🐇, música, textos y subtítulos automáticos ✨.",
-  },
-  {
-    icon: "💾",
-    title: "4. Guarda tu video",
-    text: "Cuando te guste, toca 💾 Guardar video. Todo se queda en tu equipo: no hace falta cuenta.",
-  },
+const STEPS: { icon: IconName; title: string; text: string }[] = [
+  { icon: "media", title: "Importa", text: "Añade videos, imágenes y música desde Medios. Toca un archivo para llevarlo a la línea de tiempo." },
+  { icon: "scissors", title: "Edita", text: "Arrastra los clips para ordenarlos, tira de sus bordes para recortarlos y usa Cortar para dividirlos." },
+  { icon: "sliders", title: "Ajusta", text: "Selecciona un clip y abre Editar: filtros, velocidad, volumen, textos y subtítulos automáticos." },
+  { icon: "export", title: "Exporta", text: "Genera un MP4 sin marca de agua. Todo se procesa y se guarda en tu equipo." },
 ];
 
 export function Guide({ onClose }: { onClose(): void }) {
@@ -33,8 +18,10 @@ export function Guide({ onClose }: { onClose(): void }) {
   };
   return (
     <div className="modal-back" onClick={close}>
-      <div className="modal guide" onClick={(e) => e.stopPropagation()} role="dialog" aria-label="Cómo se usa">
-        <div className="guide-icon">{step.icon}</div>
+      <div className="modal guide" onClick={(e) => e.stopPropagation()} role="dialog" aria-label="Cómo funciona">
+        <div className="guide-icon">
+          <Icon name={step.icon} size={28} />
+        </div>
         <h2>{step.title}</h2>
         <p>{step.text}</p>
         <div className="dots">
@@ -43,11 +30,11 @@ export function Guide({ onClose }: { onClose(): void }) {
           ))}
         </div>
         <div className="row-end">
-          {i > 0 && <button className="big" onClick={() => setI(i - 1)}>Atrás</button>}
+          <button className="ghost" onClick={close}>Omitir</button>
           {i < STEPS.length - 1 ? (
-            <button className="primary big" onClick={() => setI(i + 1)}>Siguiente</button>
+            <button className="primary" onClick={() => setI(i + 1)}>Siguiente</button>
           ) : (
-            <button className="primary big" onClick={close}>¡A crear! 🚀</button>
+            <button className="primary" onClick={close}>Empezar</button>
           )}
         </div>
       </div>

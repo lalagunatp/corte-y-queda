@@ -18,6 +18,9 @@ y sus prioridades salen de las quejas más repetidas de los usuarios de editores
 ## Funciones
 
 - Importar vídeo, audio e imágenes (botón o arrastrar y soltar).
+- Música de fondo desde el equipo o desde bibliotecas gratuitas (Pixabay Music, Mixkit, YouTube Audio
+  Library, Free Music Archive, Incompetech, ccMixter, Uppbeat), con notas sobre sus licencias.
+- Interfaz minimalista adaptada a PC, tablet y celular (paneles laterales o hojas inferiores).
 - Línea de tiempo multipista (vídeo, audio y texto): mover, recortar por los bordes, dividir, duplicar, eliminar, imán.
 - Vista previa en tiempo real con volumen, fundidos, velocidad (0,25×–4×), escala, posición, rotación,
   opacidad, brillo, contraste y saturación.

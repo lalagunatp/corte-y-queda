@@ -2,11 +2,12 @@ import { useRef, useState } from "react";
 import { exportMp4 } from "../engine/exporter";
 import { saveFile } from "../platform";
 import { useEditor } from "../store";
+import { Icon } from "./Icon";
 
 const SIZES = [
-  { short: 720, icon: "👍", name: "Buena", hint: "Rápido, pesa poco" },
-  { short: 1080, icon: "⭐", name: "Muy buena", hint: "La recomendada" },
-  { short: 2160, icon: "💎", name: "Máxima (4K)", hint: "Tarda más" },
+  { short: 720, name: "720p", hint: "Ligero" },
+  { short: 1080, name: "1080p", hint: "Recomendado" },
+  { short: 2160, name: "4K", hint: "Máxima" },
 ];
 const QUALITY = [
   { label: "Normal", bitsPerPixel: 0.07 },
@@ -55,81 +56,79 @@ export function ExportDialog({ onClose }: { onClose(): void }) {
     }
   };
 
-  if (saved) {
-    return (
-      <div className="modal-back" onClick={onClose}>
-        <div className="modal guide" onClick={(e) => e.stopPropagation()}>
-          <div className="guide-icon">🎉</div>
-          <h2>¡Tu video está guardado!</h2>
-          <p>{saved}</p>
-          <p className="hint">Búscalo en tu carpeta de Descargas (o donde elegiste guardarlo).</p>
-          <div className="row-end">
-            <button className="primary big" onClick={onClose}>¡Genial!</button>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
   return (
-    <div className="modal-back">
-      <div className="modal" role="dialog" aria-label="Guardar video">
-        <h2>💾 Guardar tu video</h2>
-        <p className="hint">Se guarda como MP4 en tu equipo. Sin marcas de agua y gratis.</p>
-
-        <div className="stack">
-          <span>¿Qué calidad quieres?</span>
-          <div className="choices">
-            {SIZES.map((s) => (
-              <button key={s.short} className={`choice ${short === s.short ? "on" : ""}`} onClick={() => setShort(s.short)} disabled={!!progress}>
-                <span className="ico">{s.icon}</span>
-                <b>{s.name}</b>
-                <small>{s.hint}</small>
-              </button>
-            ))}
-          </div>
-        </div>
-
-        <details>
-          <summary>Más opciones</summary>
-          <label className="stack">
-            <span>Imágenes por segundo</span>
-            <select value={fps} onChange={(e) => setFps(Number(e.target.value))} disabled={!!progress}>
-              {[24, 25, 30, 50, 60].map((f) => (
-                <option key={f} value={f}>{f}</option>
-              ))}
-            </select>
-          </label>
-          <label className="stack">
-            <span>Nitidez</span>
-            <select value={quality} onChange={(e) => setQuality(Number(e.target.value))} disabled={!!progress}>
-              {QUALITY.map((q, i) => (
-                <option key={q.label} value={i}>{q.label}</option>
-              ))}
-            </select>
-          </label>
-          <p className="hint">
-            {outW}×{outH} · {(bitrate / 1e6).toFixed(1)} Mbps
-          </p>
-        </details>
-
-        {progress && (
-          <div className="progress">
-            <div style={{ width: `${progress.f * 100}%` }} />
-            <span>⏳ {progress.stage} · {Math.round(progress.f * 100)}%</span>
-          </div>
-        )}
-        {error && <p className="error">😕 {error}</p>}
-        <div className="row-end">
-          {progress ? (
-            <button className="big" onClick={() => abort.current?.abort()}>Cancelar</button>
-          ) : (
-            <>
-              <button className="big" onClick={onClose}>Volver</button>
-              <button className="primary big" onClick={run}>💾 Guardar</button>
-            </>
+    <div className="modal-back" onClick={progress ? undefined : onClose}>
+      <div className="modal" onClick={(e) => e.stopPropagation()} role="dialog" aria-label="Exportar">
+        <div className="modal-head">
+          <h2>{saved ? "Video exportado" : "Exportar"}</h2>
+          {!progress && (
+            <button className="ghost" onClick={onClose} aria-label="Cerrar">
+              <Icon name="close" />
+            </button>
           )}
         </div>
+
+        {saved ? (
+          <>
+            <p className="done">
+              <Icon name="check" /> {saved}
+            </p>
+            <div className="row-end">
+              <button className="primary" onClick={onClose}>Cerrar</button>
+            </div>
+          </>
+        ) : (
+          <>
+            <div className="segmented">
+              {SIZES.map((s) => (
+                <button key={s.short} className={short === s.short ? "on" : ""} onClick={() => setShort(s.short)} disabled={!!progress}>
+                  <b>{s.name}</b>
+                  <small>{s.hint}</small>
+                </button>
+              ))}
+            </div>
+            <p className="muted small">
+              MP4 · {outW}×{outH} · {fps} fps · sin marca de agua
+            </p>
+
+            <details>
+              <summary>Avanzado</summary>
+              <label className="stack">
+                <span>Fotogramas por segundo</span>
+                <select value={fps} onChange={(e) => setFps(Number(e.target.value))} disabled={!!progress}>
+                  {[24, 25, 30, 50, 60].map((f) => (
+                    <option key={f} value={f}>{f}</option>
+                  ))}
+                </select>
+              </label>
+              <label className="stack">
+                <span>Calidad · {(bitrate / 1e6).toFixed(1)} Mbps</span>
+                <select value={quality} onChange={(e) => setQuality(Number(e.target.value))} disabled={!!progress}>
+                  {QUALITY.map((q, i) => (
+                    <option key={q.label} value={i}>{q.label}</option>
+                  ))}
+                </select>
+              </label>
+            </details>
+
+            {progress && (
+              <div className="progress" aria-label={progress.stage}>
+                <div style={{ width: `${progress.f * 100}%` }} />
+                <span>{progress.stage} · {Math.round(progress.f * 100)}%</span>
+              </div>
+            )}
+            {error && <p className="error">{error}</p>}
+            <div className="row-end">
+              {progress ? (
+                <button onClick={() => abort.current?.abort()}>Cancelar</button>
+              ) : (
+                <button className="primary" onClick={run}>
+                  <Icon name="export" /> Exportar
+                </button>
+              )}
+            </div>
+          </>
+        )}
       </div>
     </div>
   );

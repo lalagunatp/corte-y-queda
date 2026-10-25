@@ -32,9 +32,9 @@ function seek(el: HTMLVideoElement, t: number): Promise<void> {
 
 /** Exporta el proyecto a MP4 (H.264 + AAC) íntegramente en el equipo, sin marca de agua. */
 export async function exportMp4(p: Project, opts: ExportOptions): Promise<Blob> {
-  if (typeof VideoEncoder === "undefined") throw new Error("Este navegador no puede crear videos. Usa Chrome o Edge (en PC, Android o la app de escritorio).");
+  if (typeof VideoEncoder === "undefined") throw new Error("Este navegador no admite la exportación de video. Usa Chrome, Edge o la app de escritorio.");
   const duration = projectDuration(p);
-  if (duration <= 0) throw new Error("Tu video está vacío: añade algo primero.");
+  if (duration <= 0) throw new Error("El proyecto está vacío.");
 
   const height = even(opts.height);
   const width = even((p.width / p.height) * height);
@@ -73,7 +73,7 @@ export async function exportMp4(p: Project, opts: ExportOptions): Promise<Blob> 
 
   // --- Audio ---
   if (hasAudioEncoder) {
-    opts.onProgress(0, "Preparando el sonido");
+    opts.onProgress(0, "Mezclando audio");
     const mix = await mixProjectAudio(p, duration);
     const audio = new AudioEncoder({
       output: (chunk, meta) => muxer.addAudioChunk(chunk, meta),
@@ -161,7 +161,7 @@ export async function exportMp4(p: Project, opts: ExportOptions): Promise<Blob> 
       frame.close();
       // Evita acumular demasiados fotogramas pendientes en el codificador.
       while (video.encodeQueueSize > 8) await new Promise((r) => setTimeout(r, 1));
-      if (i % 5 === 0) opts.onProgress(i / total, "Creando tu video");
+      if (i % 5 === 0) opts.onProgress(i / total, "Renderizando");
     }
     await video.flush();
     if (failure) throw failure;

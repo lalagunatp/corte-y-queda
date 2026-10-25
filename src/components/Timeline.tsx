@@ -4,12 +4,13 @@ import { selectDuration, useEditor } from "../store";
 import type { Clip, MediaClip, Track } from "../types";
 import { clipEnd, formatTime } from "../util";
 import { useUi } from "../ui";
+import { Icon, type IconName } from "./Icon";
 import { ASSET_DRAG_TYPE } from "./MediaBin";
 
 const TOUCH = window.matchMedia("(pointer: coarse)").matches;
 // Filas más altas en pantallas táctiles para que se puedan tocar con el dedo.
 const ROW_HEIGHT: Record<Track["kind"], number> = TOUCH ? { video: 72, audio: 56, text: 48 } : { video: 60, audio: 46, text: 36 };
-const TRACK_ICON: Record<Track["kind"], string> = { video: "🎬", audio: "🎵", text: "🔤" };
+const TRACK_ICON: Record<Track["kind"], IconName> = { video: "film", audio: "music", text: "type" };
 const SNAP_PX = 8;
 
 type DragMode = "move" | "trim-l" | "trim-r";
@@ -178,33 +179,41 @@ export function Timeline() {
   return (
     <section className="timeline">
       <div className="tl-toolbar">
-        <button className="tool" onClick={() => s().splitAtPlayhead()} disabled={!project.clips.length} title="Partir en la línea verde (S)">
-          <span className="ico">✂️</span>Cortar
+        <button className="tool" onClick={() => s().splitAtPlayhead()} disabled={!project.clips.length} title="Dividir en el cabezal (S)">
+          <Icon name="scissors" />
+          <span>Dividir</span>
         </button>
-        <button className="tool" onClick={() => s().deleteSelected()} disabled={!selected.length} title="Borrar lo elegido (Supr)">
-          <span className="ico">🗑️</span>Borrar
+        <button className="tool" onClick={() => s().deleteSelected()} disabled={!selected.length} title="Eliminar (Supr)">
+          <Icon name="trash" />
+          <span>Eliminar</span>
         </button>
-        <button className="tool" onClick={() => s().duplicateSelected()} disabled={!selected.length} title="Copiar lo elegido (Ctrl+D)">
-          <span className="ico">📄</span>Copiar
+        <button className="tool" onClick={() => s().duplicateSelected()} disabled={!selected.length} title="Duplicar (Ctrl+D)">
+          <Icon name="copy" />
+          <span>Duplicar</span>
         </button>
         <span className="grow" />
-        <button className="tool" onClick={() => s().setZoom(zoom / 1.4)} title="Ver más tiempo (-)" aria-label="Alejar">
-          <span className="ico">➖</span>
+        <button className="tool" onClick={() => s().setZoom(zoom / 1.4)} title="Alejar (-)" aria-label="Alejar">
+          <Icon name="zoomOut" />
         </button>
-        <span className="zoom-label">🔍</span>
-        <button className="tool" onClick={() => s().setZoom(zoom * 1.4)} title="Ver más de cerca (+)" aria-label="Acercar">
-          <span className="ico">➕</span>
+        <button className="tool" onClick={() => s().setZoom(zoom * 1.4)} title="Acercar (+)" aria-label="Acercar">
+          <Icon name="zoomIn" />
         </button>
         <details className="menu">
-          <summary className="tool" title="Más herramientas">
-            <span className="ico">⋯</span>
+          <summary className="tool" title="Más opciones" aria-label="Más opciones">
+            <Icon name="more" />
           </summary>
           <div className="menu-pop">
-            <button onClick={() => s().addTrack("video")}>🎬 Nueva fila de video</button>
-            <button onClick={() => s().addTrack("audio")}>🎵 Nueva fila de sonido</button>
-            <button onClick={() => s().addTrack("text")}>🔤 Nueva fila de texto</button>
+            <button onClick={() => s().addTrack("video")}>
+              <Icon name="film" /> Nueva pista de video
+            </button>
+            <button onClick={() => s().addTrack("audio")}>
+              <Icon name="music" /> Nueva pista de audio
+            </button>
+            <button onClick={() => s().addTrack("text")}>
+              <Icon name="type" /> Nueva pista de texto
+            </button>
             <label className="check">
-              <input type="checkbox" checked={snapping} onChange={(e) => setSnapping(e.target.checked)} /> 🧲 Pegar los bordes al mover
+              <input type="checkbox" checked={snapping} onChange={(e) => setSnapping(e.target.checked)} /> Ajuste magnético
             </label>
           </div>
         </details>
@@ -214,27 +223,29 @@ export function Timeline() {
           <div className="ruler-pad" />
           {project.tracks.map((t) => (
             <div key={t.id} className={`tl-head ${t.kind}`} style={{ height: ROW_HEIGHT[t.kind] }}>
-              <span className="tico" title={t.name}>{TRACK_ICON[t.kind]}</span>
+              <span className="tico" title={t.name}>
+                <Icon name={TRACK_ICON[t.kind]} size={15} />
+              </span>
               <span className="tname">{t.name}</span>
               {t.kind !== "audio" && (
-                <button className={`eye ${t.hidden ? "off" : ""}`} onClick={() => s().updateTrack(t.id, { hidden: !t.hidden })} title={t.hidden ? "Mostrar esta fila" : "Ocultar esta fila"}>
-                  {t.hidden ? "🙈" : "👁️"}
+                <button className={`eye ${t.hidden ? "off" : ""}`} onClick={() => s().updateTrack(t.id, { hidden: !t.hidden })} title={t.hidden ? "Mostrar pista" : "Ocultar pista"}>
+                  <Icon name={t.hidden ? "eyeOff" : "eye"} size={15} />
                 </button>
               )}
               {t.kind !== "text" && (
-                <button className={t.muted ? "off" : ""} onClick={() => s().updateTrack(t.id, { muted: !t.muted })} title={t.muted ? "Activar sonido" : "Quitar sonido"}>
-                  {t.muted ? "🔇" : "🔊"}
+                <button className={t.muted ? "off" : ""} onClick={() => s().updateTrack(t.id, { muted: !t.muted })} title={t.muted ? "Activar sonido" : "Silenciar pista"}>
+                  <Icon name={t.muted ? "mute" : "volume"} size={15} />
                 </button>
               )}
               <button
                 className="trash"
                 onClick={() => {
                   const n = project.clips.filter((c) => c.trackId === t.id).length;
-                  if (n === 0 || confirm(`¿Borrar la fila «${t.name}» y sus ${n} trozo(s)?`)) s().removeTrack(t.id);
+                  if (n === 0 || confirm(`¿Eliminar la pista «${t.name}» y sus ${n} clip(s)?`)) s().removeTrack(t.id);
                 }}
-                title="Borrar esta fila"
+                title="Eliminar pista"
               >
-                ✕
+                <Icon name="close" size={13} />
               </button>
             </div>
           ))}
@@ -251,9 +262,7 @@ export function Timeline() {
           }}
         >
           {!project.clips.length && (
-            <div className="tl-empty">
-              👆 Aquí aparecerán los trozos de tu video. Empieza con <b>📁 Mis archivos</b>.
-            </div>
+            <div className="tl-empty">La línea de tiempo está vacía</div>
           )}
           <div style={{ width, position: "relative" }}>
             <div className="ruler" onPointerDown={(e) => { e.stopPropagation(); scrub(e); }}>

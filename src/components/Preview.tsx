@@ -2,6 +2,7 @@ import { useEffect, useRef } from "react";
 import { PreviewEngine } from "../engine/preview";
 import { selectDuration, useEditor } from "../store";
 import { formatTime } from "../util";
+import { Icon } from "./Icon";
 import { importIntoProject } from "./MediaBin";
 
 export const engineRef: { current: PreviewEngine | null } = { current: null };
@@ -67,11 +68,9 @@ export function Preview() {
         />
         {empty && (
           <div className="welcome">
-            <div className="big-ico">🎬</div>
-            <h2>¡Hola! Vamos a hacer un video</h2>
-            <p>Empieza trayendo tus videos, fotos o música.</p>
-            <button className="primary big" onClick={() => picker.current?.click()}>
-              📁 Añadir videos y fotos
+            <p className="muted">Importa videos, imágenes o audio para empezar</p>
+            <button className="primary" onClick={() => picker.current?.click()}>
+              <Icon name="upload" /> Importar archivos
             </button>
             <input
               ref={picker}
@@ -90,13 +89,21 @@ export function Preview() {
         )}
       </div>
       <div className="transport">
-        <button onClick={() => setTime(0)} title="Ir al principio (Inicio)" aria-label="Ir al principio">⏮️</button>
-        <button onClick={() => setTime(time - 1)} title="Atrás 1 segundo (←)" aria-label="Atrás">⏪</button>
-        <button className="play" onClick={toggle} disabled={empty} title="Ver / pausar (Espacio)" aria-label={playing ? "Pausar" : "Ver"}>
-          {playing ? "⏸️" : "▶️"}
+        <button className="ghost" onClick={() => setTime(0)} title="Ir al inicio (Inicio)" aria-label="Ir al inicio">
+          <Icon name="start" size={16} />
         </button>
-        <button onClick={() => setTime(time + 1)} title="Adelante 1 segundo (→)" aria-label="Adelante">⏩</button>
-        <button onClick={() => setTime(duration)} title="Ir al final (Fin)" aria-label="Ir al final">⏭️</button>
+        <button className="ghost" onClick={() => setTime(time - 1)} title="Atrás 1 s (←)" aria-label="Atrás">
+          <Icon name="back" size={16} />
+        </button>
+        <button className="play" onClick={toggle} disabled={empty} title="Reproducir / pausar (Espacio)" aria-label={playing ? "Pausar" : "Reproducir"}>
+          <Icon name={playing ? "pause" : "play"} size={18} />
+        </button>
+        <button className="ghost" onClick={() => setTime(time + 1)} title="Adelante 1 s (→)" aria-label="Adelante">
+          <Icon name="forward" size={16} />
+        </button>
+        <button className="ghost" onClick={() => setTime(duration)} title="Ir al final (Fin)" aria-label="Ir al final">
+          <Icon name="end" size={16} />
+        </button>
         <span className="timecode">
           {formatTime(time, project.fps).slice(0, 5)} / {formatTime(duration, project.fps).slice(0, 5)}
         </span>

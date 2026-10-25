@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { ExportDialog } from "./components/ExportDialog";
 import { Guide } from "./components/Guide";
+import { Icon } from "./components/Icon";
 import { Inspector } from "./components/Inspector";
 import { MediaBin, importIntoProject } from "./components/MediaBin";
 import { Preview } from "./components/Preview";
@@ -17,8 +18,11 @@ function Sheet({ title, onClose, children }: { title: string; onClose(): void; c
     <div className="sheet-back" onClick={onClose}>
       <div className="sheet" onClick={(e) => e.stopPropagation()} role="dialog" aria-label={title}>
         <div className="sheet-head">
+          <span className="grabber" />
           <strong>{title}</strong>
-          <button className="icon-btn" onClick={onClose} aria-label="Cerrar">✕</button>
+          <button className="ghost" onClick={onClose} aria-label="Cerrar">
+            <Icon name="close" />
+          </button>
         </div>
         <div className="sheet-body">{children}</div>
       </div>
@@ -32,6 +36,7 @@ export function App() {
   const hasSelection = useEditor((s) => s.selected.length > 0);
   const canUndo = useEditor((s) => s.past.length > 0);
   const canRedo = useEditor((s) => s.future.length > 0);
+  const projectName = useEditor((s) => s.project.name);
   const s = useEditor.getState;
   const { sheet, setSheet, exporting, setExporting, help, setHelp } = useUi();
   const compact = useMediaQuery(COMPACT_QUERY);
@@ -44,7 +49,7 @@ export function App() {
     let cancelled = false;
     void restoreLastProject().then((r) => {
       if (cancelled) return;
-      if (r?.missing) s().setStatus(`${r.missing} archivo(s) del proyecto anterior ya no están disponibles.`);
+      if (r?.missing) s().setStatus(`Faltan ${r.missing} archivo(s) del proyecto anterior`);
       stopAutosave = startAutosave();
       setReady(true);
       if (!guideSeen()) useUi.getState().setHelp(true);
@@ -59,7 +64,7 @@ export function App() {
 
   useEffect(() => {
     if (!status) return;
-    const t = setTimeout(() => s().setStatus(null), 4000);
+    const t = setTimeout(() => s().setStatus(null), 3500);
     return () => clearTimeout(t);
   }, [status, s]);
 
@@ -68,13 +73,7 @@ export function App() {
     if (!compact) setSheet(null);
   }, [compact, setSheet]);
 
-  if (!ready) return <div className="loading">Cargando…</div>;
-
-  const save = (
-    <button className="primary big" onClick={() => setExporting(true)} disabled={!hasClips}>
-      💾 Guardar video
-    </button>
-  );
+  if (!ready) return <div className="loading" />;
 
   return (
     <div
@@ -87,26 +86,35 @@ export function App() {
       }}
     >
       <header className="topbar">
-        <strong className="logo">✂️ Corte y Queda</strong>
-        <button className="icon-btn" onClick={() => s().undo()} disabled={!canUndo} title="Deshacer (Ctrl+Z)" aria-label="Deshacer">
-          ↩️<span className="lbl">Deshacer</span>
+        <span className="brand">Corte y Queda</span>
+        <span className="sep" />
+        <button className="ghost project" onClick={() => setSettings(true)} title="Ajustes del proyecto">
+          {projectName}
         </button>
-        <button className="icon-btn" onClick={() => s().redo()} disabled={!canRedo} title="Rehacer (Ctrl+Y)" aria-label="Rehacer">
-          ↪️<span className="lbl">Rehacer</span>
+        <span className="grow" />
+        {status && <span className="status">{status}</span>}
+        <button className="ghost" onClick={() => s().undo()} disabled={!canUndo} title="Deshacer (Ctrl+Z)" aria-label="Deshacer">
+          <Icon name="undo" />
         </button>
-        <span className="grow">{status && <span className="status">{status}</span>}</span>
+        <button className="ghost" onClick={() => s().redo()} disabled={!canRedo} title="Rehacer (Ctrl+Y)" aria-label="Rehacer">
+          <Icon name="redo" />
+        </button>
         {install && (
-          <button className="icon-btn" onClick={() => void install()} title="Instalar como aplicación">
-            ⬇️<span className="lbl">Instalar</span>
+          <button className="ghost" onClick={() => void install()} title="Instalar aplicación" aria-label="Instalar">
+            <Icon name="download" />
           </button>
         )}
-        <button className="icon-btn" onClick={() => setSettings(true)} title="Ajustes del proyecto" aria-label="Ajustes">
-          ⚙️<span className="lbl">Ajustes</span>
+        <button className="ghost" onClick={() => setSettings(true)} title="Ajustes" aria-label="Ajustes">
+          <Icon name="settings" />
         </button>
-        <button className="icon-btn" onClick={() => setHelp(true)} title="Ayuda" aria-label="Ayuda">
-          ❓<span className="lbl">Ayuda</span>
+        <button className="ghost" onClick={() => setHelp(true)} title="Ayuda" aria-label="Ayuda">
+          <Icon name="help" />
         </button>
-        {!compact && save}
+        {!compact && (
+          <button className="primary" onClick={() => setExporting(true)} disabled={!hasClips}>
+            <Icon name="export" /> Exportar
+          </button>
+        )}
       </header>
 
       <main className="workspace">
@@ -120,10 +128,12 @@ export function App() {
       {compact && (
         <nav className="bottomnav">
           <button className={sheet === "media" ? "on" : ""} onClick={() => setSheet(sheet === "media" ? null : "media")}>
-            <span className="ico">📁</span>Mis archivos
+            <Icon name="media" size={22} />
+            Medios
           </button>
           <button className={sheet === "edit" ? "on" : ""} onClick={() => setSheet(sheet === "edit" ? null : "edit")}>
-            <span className="ico">🎨</span>Editar{hasSelection && <span className="dot" />}
+            <Icon name="sliders" size={22} />
+            Editar{hasSelection && <span className="dot" />}
           </button>
           <button
             onClick={() => {
@@ -131,21 +141,23 @@ export function App() {
               setSheet("edit");
             }}
           >
-            <span className="ico">🔤</span>Texto
+            <Icon name="type" size={22} />
+            Texto
           </button>
-          <button className="save" onClick={() => setExporting(true)} disabled={!hasClips}>
-            <span className="ico">💾</span>Guardar
+          <button className="accent" onClick={() => setExporting(true)} disabled={!hasClips}>
+            <Icon name="export" size={22} />
+            Exportar
           </button>
         </nav>
       )}
 
       {compact && sheet === "media" && (
-        <Sheet title="📁 Mis archivos" onClose={() => setSheet(null)}>
+        <Sheet title="Medios" onClose={() => setSheet(null)}>
           <MediaBin />
         </Sheet>
       )}
       {compact && sheet === "edit" && (
-        <Sheet title="🎨 Editar" onClose={() => setSheet(null)}>
+        <Sheet title="Editar" onClose={() => setSheet(null)}>
           <Inspector />
         </Sheet>
       )}
