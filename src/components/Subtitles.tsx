@@ -59,8 +59,9 @@ function Generate({ onDone }: { onDone(n: number): void }) {
   const [source, setSource] = useState<string>(preferred && sources.some((c) => c.id === preferred) ? preferred : (sources[0]?.id ?? ""));
   const [language, setLanguage] = useState("spanish");
   const [model, setModel] = useState(CAPTION_MODELS[0].id);
-  const [busy, setBusy] = useState<string | null>(null);
+  const [busy, setBusy] = useState<{ stage: string; fraction: number | null } | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const abort = useRef<AbortController | null>(null);
 
   useEffect(() => {
     if (preferred && sources.some((c) => c.id === preferred)) setSource(preferred);
@@ -73,11 +74,14 @@ function Generate({ onDone }: { onDone(n: number): void }) {
   const run = async () => {
     if (!clip) return;
     setError(null);
+    setBusy({ stage: "Preparando audio", fraction: null });
+    abort.current = new AbortController();
     try {
       const lines = await generateCaptions(clip, {
         language: language || null,
         model,
-        onProgress: (stage, f) => setBusy(f == null ? stage : `${stage} ${Math.round(f * 100)}%`),
+        signal: abort.current.signal,
+        onProgress: (stage, fraction) => setBusy({ stage, fraction }),
       });
       if (!lines.length) setError("No se detectó voz en este clip.");
       else {
@@ -85,9 +89,10 @@ function Generate({ onDone }: { onDone(n: number): void }) {
         onDone(lines.length);
       }
     } catch (e) {
-      setError(e instanceof Error ? e.message : String(e));
+      if (!(e instanceof DOMException && e.name === "AbortError")) setError(e instanceof Error ? e.message : String(e));
     } finally {
       setBusy(null);
+      abort.current = null;
     }
   };
 
@@ -111,11 +116,20 @@ function Generate({ onDone }: { onDone(n: number): void }) {
             <option key={v} value={v}>{l}</option>
           ))}
         </select>
-        <button className="primary" onClick={run} disabled={!!busy || !clip}>
-          <Icon name="sparkles" /> Generar
-        </button>
+        {busy ? (
+          <button onClick={() => abort.current?.abort()}>Cancelar</button>
+        ) : (
+          <button className="primary" onClick={run} disabled={!clip}>
+            <Icon name="sparkles" /> Generar
+          </button>
+        )}
       </div>
-      {busy && <p className="muted small">{busy}</p>}
+      {busy && (
+        <div className={`progress slim ${busy.fraction == null ? "indeterminate" : ""}`} role="progressbar" aria-valuenow={busy.fraction == null ? undefined : Math.round(busy.fraction * 100)}>
+          <div style={{ width: busy.fraction == null ? undefined : `${Math.max(3, busy.fraction * 100)}%` }} />
+          <span>{busy.stage}</span>
+        </div>
+      )}
       {error && <p className="error small">{error}</p>}
       <details>
         <summary>Modelo</summary>

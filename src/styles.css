@@ -276,6 +276,10 @@ button.mini { min-height: 24px; min-width: 24px; padding: 0; }
 .progress { position: relative; height: 30px; background: var(--surface-2); border-radius: 8px; overflow: hidden; }
 .progress div { position: absolute; inset: 0 auto 0 0; background: var(--accent-soft); border-right: 2px solid var(--accent); transition: width 0.2s; }
 .progress span { position: relative; line-height: 30px; padding-left: 10px; font-size: 0.9em; }
+.progress.slim { height: auto; min-height: 30px; background: var(--bg); }
+.progress.slim span { display: block; line-height: 1.35; padding: 7px 10px; font-size: 0.86em; }
+.progress.indeterminate div { width: 30%; animation: slide 1.2s ease-in-out infinite; border-right: 0; }
+@keyframes slide { from { left: -30%; } to { left: 100%; } }
 .done { display: flex; align-items: center; gap: 8px; color: var(--ok); margin: 0; }
 
 .sources { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }

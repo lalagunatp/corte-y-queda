@@ -1,13 +1,14 @@
 import { decodedAudio } from "../media";
 import type { MediaClip, SubtitleLine } from "../types";
-import type { CaptionMessage } from "./captionsWorker";
+import type { CaptionChunk, CaptionMessage } from "./captionsWorker";
 
 const WHISPER_RATE = 16000;
 
+// La variante exacta (y su tamaño) depende del equipo; la descarga real se muestra al generar.
 export const CAPTION_MODELS = [
-  { id: "onnx-community/whisper-base", label: "Whisper base (equilibrado, ~80 MB)" },
-  { id: "onnx-community/whisper-tiny", label: "Whisper tiny (rápido, ~40 MB)" },
-  { id: "onnx-community/whisper-small", label: "Whisper small (preciso, ~250 MB)" },
+  { id: "onnx-community/whisper-base", label: "Equilibrado (Whisper base)" },
+  { id: "onnx-community/whisper-tiny", label: "Rápido (Whisper tiny)" },
+  { id: "onnx-community/whisper-small", label: "Preciso (Whisper small)" },
 ];
 
 /** Extrae el tramo del clip como audio mono a 16 kHz, el formato que espera Whisper. */
@@ -49,20 +50,24 @@ function splitLong(text: string, start: number, end: number, maxChars = 42) {
 
 export async function generateCaptions(
   c: MediaClip,
-  opts: { language: string | null; model: string; onProgress(stage: string, fraction: number | null): void },
+  opts: { language: string | null; model: string; signal?: AbortSignal; onProgress(stage: string, fraction: number | null): void },
 ): Promise<SubtitleLine[]> {
   opts.onProgress("Preparando audio", null);
   const audio = await clipAudio16k(c);
   const worker = new Worker(new URL("./captionsWorker.ts", import.meta.url), { type: "module" });
   try {
-    const chunks = await new Promise<{ start: number; end: number; text: string }[]>((resolve, reject) => {
+    const chunks = await new Promise<CaptionChunk[]>((resolve, reject) => {
+      // Cancelar termina el worker al instante, también a mitad de la descarga o de un tramo.
+      const abort = () => reject(new DOMException("Cancelado", "AbortError"));
+      if (opts.signal?.aborted) return abort();
+      opts.signal?.addEventListener("abort", abort, { once: true });
       worker.onmessage = (ev: MessageEvent<CaptionMessage>) => {
         const m = ev.data;
         if (m.type === "progress") opts.onProgress(m.stage, m.fraction);
         else if (m.type === "done") resolve(m.chunks);
         else reject(new Error(m.message));
       };
-      worker.onerror = (e) => reject(new Error(e.message));
+      worker.onerror = (e) => reject(new Error(e.message || "No se pudo iniciar el reconocimiento de voz"));
       worker.postMessage({ audio, language: opts.language, model: opts.model }, [audio.buffer]);
     });
     // Las marcas de Whisper son relativas al tramo extraído, que ya está a la velocidad del clip.
