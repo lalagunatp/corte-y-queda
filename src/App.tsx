@@ -1,23 +1,41 @@
 import { useEffect, useState } from "react";
 import { ExportDialog } from "./components/ExportDialog";
+import { Guide } from "./components/Guide";
 import { Inspector } from "./components/Inspector";
 import { MediaBin, importIntoProject } from "./components/MediaBin";
 import { Preview } from "./components/Preview";
+import { ProjectSettings } from "./components/ProjectSettings";
 import { Timeline } from "./components/Timeline";
-import { forgetAsset } from "./media";
 import { restoreLastProject, startAutosave } from "./persistence";
 import { useInstallPrompt } from "./pwa";
 import { installShortcuts } from "./shortcuts";
 import { useEditor } from "./store";
-import { ASPECTS } from "./types";
+import { COMPACT_QUERY, guideSeen, useMediaQuery, useUi } from "./ui";
+
+function Sheet({ title, onClose, children }: { title: string; onClose(): void; children: React.ReactNode }) {
+  return (
+    <div className="sheet-back" onClick={onClose}>
+      <div className="sheet" onClick={(e) => e.stopPropagation()} role="dialog" aria-label={title}>
+        <div className="sheet-head">
+          <strong>{title}</strong>
+          <button className="icon-btn" onClick={onClose} aria-label="Cerrar">✕</button>
+        </div>
+        <div className="sheet-body">{children}</div>
+      </div>
+    </div>
+  );
+}
 
 export function App() {
-  const project = useEditor((s) => s.project);
   const status = useEditor((s) => s.status);
+  const hasClips = useEditor((s) => s.project.clips.length > 0);
+  const hasSelection = useEditor((s) => s.selected.length > 0);
   const canUndo = useEditor((s) => s.past.length > 0);
   const canRedo = useEditor((s) => s.future.length > 0);
   const s = useEditor.getState;
-  const [exporting, setExporting] = useState(false);
+  const { sheet, setSheet, exporting, setExporting, help, setHelp } = useUi();
+  const compact = useMediaQuery(COMPACT_QUERY);
+  const [settings, setSettings] = useState(false);
   const [ready, setReady] = useState(false);
   const install = useInstallPrompt();
 
@@ -29,6 +47,7 @@ export function App() {
       if (r?.missing) s().setStatus(`${r.missing} archivo(s) del proyecto anterior ya no están disponibles.`);
       stopAutosave = startAutosave();
       setReady(true);
+      if (!guideSeen()) useUi.getState().setHelp(true);
     });
     const stopKeys = installShortcuts();
     return () => {
@@ -40,17 +59,26 @@ export function App() {
 
   useEffect(() => {
     if (!status) return;
-    const t = setTimeout(() => s().setStatus(null), 5000);
+    const t = setTimeout(() => s().setStatus(null), 4000);
     return () => clearTimeout(t);
   }, [status, s]);
 
-  const aspect = ASPECTS.find((a) => a.width === project.width && a.height === project.height)?.label ?? "custom";
+  // Al pasar a pantalla grande los paneles vuelven a las columnas.
+  useEffect(() => {
+    if (!compact) setSheet(null);
+  }, [compact, setSheet]);
 
   if (!ready) return <div className="loading">Cargando…</div>;
 
+  const save = (
+    <button className="primary big" onClick={() => setExporting(true)} disabled={!hasClips}>
+      💾 Guardar video
+    </button>
+  );
+
   return (
     <div
-      className="app"
+      className={`app ${compact ? "compact" : ""}`}
       onDragOver={(e) => e.dataTransfer.types.includes("Files") && e.preventDefault()}
       onDrop={(e) => {
         if (!e.dataTransfer.files.length) return;
@@ -59,61 +87,71 @@ export function App() {
       }}
     >
       <header className="topbar">
-        <strong className="logo">Corte y Queda</strong>
-        <input
-          className="pname"
-          value={project.name}
-          onChange={(e) => s().edit(() => ({ name: e.target.value }))}
-          aria-label="Nombre del proyecto"
-        />
-        <select
-          value={aspect}
-          onChange={(e) => {
-            const a = ASPECTS.find((x) => x.label === e.target.value);
-            if (a) s().edit(() => ({ width: a.width, height: a.height }));
-          }}
-          title="Formato"
-        >
-          {ASPECTS.map((a) => (
-            <option key={a.label} value={a.label}>{a.label}</option>
-          ))}
-          {aspect === "custom" && <option value="custom">{project.width}×{project.height}</option>}
-        </select>
-        <select value={project.fps} onChange={(e) => s().edit(() => ({ fps: Number(e.target.value) }))} title="Fotogramas por segundo">
-          {[24, 25, 30, 50, 60].map((f) => (
-            <option key={f} value={f}>{f} fps</option>
-          ))}
-        </select>
-        <input type="color" value={project.background} onChange={(e) => s().edit(() => ({ background: e.target.value }))} title="Color de fondo" />
-        <button onClick={() => s().undo()} disabled={!canUndo} title="Deshacer (Ctrl+Z)">↶</button>
-        <button onClick={() => s().redo()} disabled={!canRedo} title="Rehacer (Ctrl+Y)">↷</button>
-        <button
-          onClick={() => {
-            if (!confirm("¿Empezar un proyecto nuevo? El actual y sus medios se borrarán de este equipo.")) return;
-            project.assets.forEach((a) => forgetAsset(a.id));
-            s().resetProject();
-          }}
-        >
-          Nuevo
+        <strong className="logo">✂️ Corte y Queda</strong>
+        <button className="icon-btn" onClick={() => s().undo()} disabled={!canUndo} title="Deshacer (Ctrl+Z)" aria-label="Deshacer">
+          ↩️<span className="lbl">Deshacer</span>
+        </button>
+        <button className="icon-btn" onClick={() => s().redo()} disabled={!canRedo} title="Rehacer (Ctrl+Y)" aria-label="Rehacer">
+          ↪️<span className="lbl">Rehacer</span>
         </button>
         <span className="grow">{status && <span className="status">{status}</span>}</span>
-        <span className="badge" title="Todo se procesa y guarda en este equipo">🔒 Local · sin cuenta</span>
         {install && (
-          <button onClick={() => void install()} title="Instala Corte y Queda como aplicación; funciona sin conexión">
-            ⬇ Instalar app
+          <button className="icon-btn" onClick={() => void install()} title="Instalar como aplicación">
+            ⬇️<span className="lbl">Instalar</span>
           </button>
         )}
-        <button className="primary" onClick={() => setExporting(true)} disabled={!project.clips.length}>
-          Exportar
+        <button className="icon-btn" onClick={() => setSettings(true)} title="Ajustes del proyecto" aria-label="Ajustes">
+          ⚙️<span className="lbl">Ajustes</span>
         </button>
+        <button className="icon-btn" onClick={() => setHelp(true)} title="Ayuda" aria-label="Ayuda">
+          ❓<span className="lbl">Ayuda</span>
+        </button>
+        {!compact && save}
       </header>
+
       <main className="workspace">
-        <MediaBin />
+        {!compact && <MediaBin />}
         <Preview />
-        <Inspector />
+        {!compact && <Inspector />}
       </main>
+
       <Timeline />
+
+      {compact && (
+        <nav className="bottomnav">
+          <button className={sheet === "media" ? "on" : ""} onClick={() => setSheet(sheet === "media" ? null : "media")}>
+            <span className="ico">📁</span>Mis archivos
+          </button>
+          <button className={sheet === "edit" ? "on" : ""} onClick={() => setSheet(sheet === "edit" ? null : "edit")}>
+            <span className="ico">🎨</span>Editar{hasSelection && <span className="dot" />}
+          </button>
+          <button
+            onClick={() => {
+              s().addText();
+              setSheet("edit");
+            }}
+          >
+            <span className="ico">🔤</span>Texto
+          </button>
+          <button className="save" onClick={() => setExporting(true)} disabled={!hasClips}>
+            <span className="ico">💾</span>Guardar
+          </button>
+        </nav>
+      )}
+
+      {compact && sheet === "media" && (
+        <Sheet title="📁 Mis archivos" onClose={() => setSheet(null)}>
+          <MediaBin />
+        </Sheet>
+      )}
+      {compact && sheet === "edit" && (
+        <Sheet title="🎨 Editar" onClose={() => setSheet(null)}>
+          <Inspector />
+        </Sheet>
+      )}
+      {settings && <ProjectSettings onClose={() => setSettings(false)} />}
       {exporting && <ExportDialog onClose={() => setExporting(false)} />}
+      {help && <Guide onClose={() => setHelp(false)} />}
     </div>
   );
 }

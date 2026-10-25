@@ -3,9 +3,13 @@ import { decodedAudio } from "../media";
 import { selectDuration, useEditor } from "../store";
 import type { Clip, MediaClip, Track } from "../types";
 import { clipEnd, formatTime } from "../util";
+import { useUi } from "../ui";
 import { ASSET_DRAG_TYPE } from "./MediaBin";
 
-const ROW_HEIGHT: Record<Track["kind"], number> = { video: 60, audio: 46, text: 34 };
+const TOUCH = window.matchMedia("(pointer: coarse)").matches;
+// Filas más altas en pantallas táctiles para que se puedan tocar con el dedo.
+const ROW_HEIGHT: Record<Track["kind"], number> = TOUCH ? { video: 72, audio: 56, text: 48 } : { video: 60, audio: 46, text: 36 };
+const TRACK_ICON: Record<Track["kind"], string> = { video: "🎬", audio: "🎵", text: "🔤" };
 const SNAP_PX = 8;
 
 type DragMode = "move" | "trim-l" | "trim-r";
@@ -174,43 +178,83 @@ export function Timeline() {
   return (
     <section className="timeline">
       <div className="tl-toolbar">
-        <button onClick={() => s().splitAtPlayhead()} title="Dividir en el cabezal (S)">✂ Dividir</button>
-        <button onClick={() => s().deleteSelected()} disabled={!selected.length} title="Eliminar (Supr)">🗑 Eliminar</button>
-        <button onClick={() => s().duplicateSelected()} disabled={!selected.length} title="Duplicar (Ctrl+D)">⧉ Duplicar</button>
-        <span className="sep" />
-        <button onClick={() => s().addTrack("video")}>+ Pista vídeo</button>
-        <button onClick={() => s().addTrack("audio")}>+ Pista audio</button>
-        <button onClick={() => s().addTrack("text")}>+ Pista texto</button>
-        <span className="sep" />
-        <label className="check">
-          <input type="checkbox" checked={snapping} onChange={(e) => setSnapping(e.target.checked)} /> Imán
-        </label>
+        <button className="tool" onClick={() => s().splitAtPlayhead()} disabled={!project.clips.length} title="Partir en la línea verde (S)">
+          <span className="ico">✂️</span>Cortar
+        </button>
+        <button className="tool" onClick={() => s().deleteSelected()} disabled={!selected.length} title="Borrar lo elegido (Supr)">
+          <span className="ico">🗑️</span>Borrar
+        </button>
+        <button className="tool" onClick={() => s().duplicateSelected()} disabled={!selected.length} title="Copiar lo elegido (Ctrl+D)">
+          <span className="ico">📄</span>Copiar
+        </button>
         <span className="grow" />
-        <button onClick={() => s().setZoom(zoom / 1.25)} title="Alejar (-)">−</button>
-        <input type="range" min={8} max={400} value={zoom} onChange={(e) => s().setZoom(Number(e.target.value))} />
-        <button onClick={() => s().setZoom(zoom * 1.25)} title="Acercar (+)">+</button>
+        <button className="tool" onClick={() => s().setZoom(zoom / 1.4)} title="Ver más tiempo (-)" aria-label="Alejar">
+          <span className="ico">➖</span>
+        </button>
+        <span className="zoom-label">🔍</span>
+        <button className="tool" onClick={() => s().setZoom(zoom * 1.4)} title="Ver más de cerca (+)" aria-label="Acercar">
+          <span className="ico">➕</span>
+        </button>
+        <details className="menu">
+          <summary className="tool" title="Más herramientas">
+            <span className="ico">⋯</span>
+          </summary>
+          <div className="menu-pop">
+            <button onClick={() => s().addTrack("video")}>🎬 Nueva fila de video</button>
+            <button onClick={() => s().addTrack("audio")}>🎵 Nueva fila de sonido</button>
+            <button onClick={() => s().addTrack("text")}>🔤 Nueva fila de texto</button>
+            <label className="check">
+              <input type="checkbox" checked={snapping} onChange={(e) => setSnapping(e.target.checked)} /> 🧲 Pegar los bordes al mover
+            </label>
+          </div>
+        </details>
       </div>
       <div className="tl-body">
         <div className="tl-heads">
           <div className="ruler-pad" />
           {project.tracks.map((t) => (
             <div key={t.id} className={`tl-head ${t.kind}`} style={{ height: ROW_HEIGHT[t.kind] }}>
+              <span className="tico" title={t.name}>{TRACK_ICON[t.kind]}</span>
               <span className="tname">{t.name}</span>
               {t.kind !== "audio" && (
-                <button className={t.hidden ? "off" : ""} onClick={() => s().updateTrack(t.id, { hidden: !t.hidden })} title="Mostrar/ocultar">
-                  {t.hidden ? "◌" : "◉"}
+                <button className={`eye ${t.hidden ? "off" : ""}`} onClick={() => s().updateTrack(t.id, { hidden: !t.hidden })} title={t.hidden ? "Mostrar esta fila" : "Ocultar esta fila"}>
+                  {t.hidden ? "🙈" : "👁️"}
                 </button>
               )}
               {t.kind !== "text" && (
-                <button className={t.muted ? "off" : ""} onClick={() => s().updateTrack(t.id, { muted: !t.muted })} title="Silenciar">
+                <button className={t.muted ? "off" : ""} onClick={() => s().updateTrack(t.id, { muted: !t.muted })} title={t.muted ? "Activar sonido" : "Quitar sonido"}>
                   {t.muted ? "🔇" : "🔊"}
                 </button>
               )}
-              <button onClick={() => s().removeTrack(t.id)} title="Eliminar pista y sus clips">×</button>
+              <button
+                className="trash"
+                onClick={() => {
+                  const n = project.clips.filter((c) => c.trackId === t.id).length;
+                  if (n === 0 || confirm(`¿Borrar la fila «${t.name}» y sus ${n} trozo(s)?`)) s().removeTrack(t.id);
+                }}
+                title="Borrar esta fila"
+              >
+                ✕
+              </button>
             </div>
           ))}
         </div>
-        <div className="tl-scroll" ref={scroller} onPointerDown={() => s().select([])}>
+        {/* Un toque en un hueco quita la selección y lleva la línea verde ahí; arrastrar desplaza la vista. */}
+        <div
+          className="tl-scroll"
+          ref={scroller}
+          onClick={(e) => {
+            if ((e.target as Element).closest(".clip")) return;
+            s().select([]);
+            s().setPlaying(false);
+            s().setTime(timeAt(e.clientX));
+          }}
+        >
+          {!project.clips.length && (
+            <div className="tl-empty">
+              👆 Aquí aparecerán los trozos de tu video. Empieza con <b>📁 Mis archivos</b>.
+            </div>
+          )}
           <div style={{ width, position: "relative" }}>
             <div className="ruler" onPointerDown={(e) => { e.stopPropagation(); scrub(e); }}>
               {ticks.map((t) => (
@@ -243,6 +287,7 @@ export function Timeline() {
                           backgroundImage: asset?.thumbnail ? `url(${asset.thumbnail})` : undefined,
                         }}
                         onPointerDown={(e) => startDrag(e, c, "move")}
+                        onDoubleClick={() => useUi.getState().setSheet("edit")}
                         title={c.type === "text" ? c.text : asset?.name}
                       >
                         {c.type === "media" && asset?.kind !== "image" && t.kind === "audio" && (

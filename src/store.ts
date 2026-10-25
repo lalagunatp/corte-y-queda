@@ -9,7 +9,7 @@ const HISTORY_LIMIT = 200;
 export function newProject(): Project {
   return {
     id: uid("project"),
-    name: "Proyecto sin título",
+    name: "Mi video",
     width: 1920,
     height: 1080,
     fps: 30,
