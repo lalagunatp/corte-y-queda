@@ -54,6 +54,28 @@ Abre http://localhost:5173.
 | T | Añadir texto |
 | + / − | Acercar / alejar la línea de tiempo |
 
+## Publicar en GitHub
+
+1. Crea un repositorio vacío en GitHub (por ejemplo `corte-y-queda`) y sube el proyecto:
+
+   ```bash
+   git remote add origin https://github.com/TU_USUARIO/corte-y-queda.git
+   git push -u origin main
+   ```
+
+2. En el repositorio: **Settings → Pages → Build and deployment → Source: GitHub Actions**.
+   Cada push a `main` publica la web en `https://TU_USUARIO.github.io/corte-y-queda/`.
+3. La web es una app instalable (PWA): en Chrome o Edge aparece el botón **⬇ Instalar app**
+   (o el icono de instalar en la barra de direcciones). Una vez instalada funciona sin conexión.
+4. Para publicar el instalador de Windows, crea una etiqueta de versión:
+
+   ```bash
+   git tag v0.1.0
+   git push origin v0.1.0
+   ```
+
+   El workflow `release.yml` compila el `.msi` y el `.exe` en GitHub y los adjunta a una Release.
+
 ## Versión de escritorio (Tauri)
 
 La app de escritorio usa el mismo editor dentro de WebView2. Para compilarla hace falta
