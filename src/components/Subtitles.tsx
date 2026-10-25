@@ -4,7 +4,7 @@ import { saveFile } from "../platform";
 import { DEFAULT_SUBTITLE_STYLE, subtitleClips, subtitleStyleOf, useEditor } from "../store";
 import { formatEditable, parseEditable, parseSubtitles, toSrt } from "../subtitles";
 import type { MediaClip, TextClip } from "../types";
-import { useUi } from "../ui";
+import { COMPACT_QUERY, useUi } from "../ui";
 import { clipEnd } from "../util";
 import { Icon } from "./Icon";
 
@@ -252,6 +252,21 @@ export function Subtitles() {
     list.current?.querySelector(`[data-id="${activeId}"]`)?.scrollIntoView({ block: "nearest" });
   }, [activeId, s]);
 
+  // Un subtítulo tocado en el video o en la línea de tiempo se muestra y se resalta aquí.
+  const focus = useUi((u) => u.focusSubtitle);
+  const [flash, setFlash] = useState<string | null>(null);
+  useEffect(() => {
+    if (!focus) return;
+    const row = list.current?.querySelector<HTMLElement>(`[data-id="${focus.id}"]`);
+    if (!row) return;
+    row.scrollIntoView({ block: "center", behavior: "smooth" });
+    setFlash(focus.id);
+    // En el celular no se enfoca para no abrir el teclado encima del video.
+    if (!window.matchMedia(COMPACT_QUERY).matches) row.querySelector("textarea")?.focus({ preventScroll: true });
+    const t = setTimeout(() => setFlash(null), 1200);
+    return () => clearTimeout(t);
+  }, [focus]);
+
   const add = () => {
     const t = s().time;
     const covering = lines.find((l) => t >= l.start && t < clipEnd(l));
@@ -368,7 +383,7 @@ export function Subtitles() {
             <div
               key={l.id}
               data-id={l.id}
-              className={`sub-row ${l.id === activeId ? "active" : ""} ${selected.includes(l.id) ? "selected" : ""}`}
+              className={`sub-row ${l.id === activeId ? "active" : ""} ${selected.includes(l.id) ? "selected" : ""} ${flash === l.id ? "flash" : ""}`}
             >
               <div className="sub-head">
                 <button className="sub-index" onClick={() => seek(l)} title="Ir a este subtítulo">

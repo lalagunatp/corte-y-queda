@@ -1,7 +1,8 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { PreviewEngine } from "../engine/preview";
 import { selectDuration, useEditor } from "../store";
 import { formatTime } from "../util";
+import { COMPACT_QUERY, useUi } from "../ui";
 import { Icon } from "./Icon";
 import { importIntoProject } from "./MediaBin";
 
@@ -37,7 +38,7 @@ export function Preview() {
         s.setTime(t);
       }
       const ctx = canvas.current?.getContext("2d");
-      if (ctx) engine.render(ctx, s.project, t, s.playing);
+      if (ctx) engine.render(ctx, s.project, t, s.playing, s.playing ? [] : s.selected);
       raf = requestAnimationFrame(loop);
     };
     raf = requestAnimationFrame(loop);
@@ -56,15 +57,57 @@ export function Preview() {
 
   const empty = project.clips.length === 0;
 
+  // La vista previa se ajusta entera al hueco disponible (contener), sea horizontal o vertical.
+  const stage = useRef<HTMLDivElement>(null);
+  const [fit, setFit] = useState<{ w: number; h: number } | null>(null);
+  // Vista ampliada: ocupa toda la ventana para ver textos y subtítulos con detalle.
+  const [expanded, setExpanded] = useState(false);
+  useEffect(() => {
+    if (!expanded) return;
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && setExpanded(false);
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [expanded]);
+  useEffect(() => {
+    const el = stage.current;
+    if (!el) return;
+    const measure = () => {
+      const cs = getComputedStyle(el);
+      const availW = el.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight);
+      const availH = el.clientHeight - parseFloat(cs.paddingTop) - parseFloat(cs.paddingBottom);
+      const k = Math.min(availW / project.width, availH / project.height);
+      setFit(k > 0 ? { w: Math.floor(project.width * k), h: Math.floor(project.height * k) } : null);
+    };
+    measure();
+    const ro = new ResizeObserver(measure);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [project.width, project.height]);
+
+  /** Tocar un texto lo abre para editarlo; tocar en otro sitio reproduce o pausa. */
+  const onStageClick = (e: React.MouseEvent<HTMLCanvasElement>) => {
+    const rect = e.currentTarget.getBoundingClientRect();
+    const x = ((e.clientX - rect.left) / rect.width) * project.width;
+    const y = ((e.clientY - rect.top) / rect.height) * project.height;
+    const id = playing ? null : engineRef.current?.textAt(x, y);
+    if (!id) return toggle();
+    const s = useEditor.getState();
+    s.select([id]);
+    const clip = s.project.clips.find((c) => c.id === id);
+    const isSubtitle = s.project.tracks.find((t) => t.id === clip?.trackId)?.role === "subtitles";
+    if (isSubtitle) useUi.getState().editSubtitle(id);
+    else if (window.matchMedia(COMPACT_QUERY).matches) useUi.getState().setSheet("edit");
+  };
+
   return (
-    <section className="preview">
-      <div className="stage">
+    <section className={`preview ${expanded ? "expanded" : ""}`}>
+      <div className="stage" ref={stage}>
         <canvas
           ref={canvas}
           width={project.width}
           height={project.height}
-          style={{ aspectRatio: `${project.width} / ${project.height}` }}
-          onClick={empty ? undefined : toggle}
+          style={fit ? { width: fit.w, height: fit.h } : { visibility: "hidden" }}
+          onClick={empty ? undefined : onStageClick}
         />
         {empty && (
           <div className="welcome">
@@ -103,6 +146,15 @@ export function Preview() {
         </button>
         <button className="ghost" onClick={() => setTime(duration)} title="Ir al final (Fin)" aria-label="Ir al final">
           <Icon name="end" size={16} />
+        </button>
+        <button
+          className="ghost expand"
+          onClick={() => setExpanded(!expanded)}
+          title={expanded ? "Volver (Esc)" : "Ampliar la vista previa"}
+          aria-label={expanded ? "Volver" : "Ampliar"}
+          disabled={empty}
+        >
+          <Icon name={expanded ? "minimize" : "maximize"} size={16} />
         </button>
         <span className="timecode">
           {formatTime(time, project.fps).slice(0, 5)} / {formatTime(duration, project.fps).slice(0, 5)}

@@ -16,39 +16,47 @@ export function useMediaQuery(query: string): boolean {
 }
 
 export type Sheet = "media" | "edit" | "subtitles" | null;
-export type SidePanel = "edit" | "subtitles";
+export type LeftPanel = "media" | "subtitles";
+
+const compact = () => window.matchMedia(COMPACT_QUERY).matches;
 
 interface UiState {
-  /** Panel abierto como hoja inferior en pantallas pequeñas. */
+  /** Panel abierto en lugar de la línea de tiempo en pantallas pequeñas. */
   sheet: Sheet;
-  /** Pestaña de la columna derecha en pantallas grandes. */
-  side: SidePanel;
+  /** Pestaña de la columna izquierda en pantallas grandes. */
+  left: LeftPanel;
   /** Clip elegido como fuente para generar subtítulos. */
   subtitleSource: string | null;
+  /** Subtítulo que la lista debe mostrar y resaltar (cambia en cada petición). */
+  focusSubtitle: { id: string; at: number } | null;
   exporting: boolean;
   help: boolean;
   setSheet(s: Sheet): void;
-  setSide(p: SidePanel): void;
-  /** Abre el panel Subtítulos (como pestaña u hoja según el tamaño de pantalla). */
+  setLeft(p: LeftPanel): void;
+  /** Abre el panel Subtítulos (pestaña izquierda u hoja según el tamaño de pantalla). */
   openSubtitles(sourceClipId?: string): void;
+  /** Abre el panel donde se edita ese subtítulo y lo resalta en la lista. */
+  editSubtitle(id: string): void;
   setExporting(v: boolean): void;
   setHelp(v: boolean): void;
 }
 
 export const useUi = create<UiState>((set) => ({
   sheet: null,
-  side: "edit",
+  left: "media",
   subtitleSource: null,
+  focusSubtitle: null,
   exporting: false,
   help: false,
   setSheet: (sheet) => set({ sheet }),
-  setSide: (side) => set({ side }),
+  setLeft: (left) => set({ left }),
   openSubtitles: (sourceClipId) =>
     set({
-      side: "subtitles",
-      sheet: window.matchMedia(COMPACT_QUERY).matches ? "subtitles" : null,
+      left: "subtitles",
+      sheet: compact() ? "subtitles" : null,
       ...(sourceClipId ? { subtitleSource: sourceClipId } : {}),
     }),
+  editSubtitle: (id) => set({ left: "subtitles", sheet: compact() ? "subtitles" : null, focusSubtitle: { id, at: Date.now() } }),
   setExporting: (exporting) => set({ exporting }),
   setHelp: (help) => set({ help }),
 }));

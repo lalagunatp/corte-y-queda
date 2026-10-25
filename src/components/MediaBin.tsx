@@ -1,7 +1,7 @@
 import { useRef, useState } from "react";
 import { forgetAsset, importFiles } from "../media";
 import { useEditor } from "../store";
-import { COMPACT_QUERY, useMediaQuery, useUi } from "../ui";
+import { useUi } from "../ui";
 import { formatTime } from "../util";
 import { FreeMusic } from "./FreeMusic";
 import { Icon } from "./Icon";
@@ -33,7 +33,6 @@ export function MediaBin() {
   const audio = useRef<HTMLInputElement>(null);
   const [over, setOver] = useState(false);
   const [freeMusic, setFreeMusic] = useState(false);
-  const compact = useMediaQuery(COMPACT_QUERY);
 
   const add = (id: string) => {
     addClip(id);
@@ -108,7 +107,6 @@ export function MediaBin() {
 
       <section className="bin-section">
         <div className="section-head">
-          {!compact && <h2 className="panel-title">Medios</h2>}
           <button className="primary" onClick={() => visual.current?.click()}>
             <Icon name="upload" /> Importar
           </button>

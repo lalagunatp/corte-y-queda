@@ -3,7 +3,7 @@ import { decodedAudio } from "../media";
 import { selectDuration, useEditor } from "../store";
 import type { Clip, MediaClip, Track } from "../types";
 import { clipEnd, formatTime } from "../util";
-import { useUi } from "../ui";
+import { COMPACT_QUERY, useUi } from "../ui";
 import { Icon, type IconName } from "./Icon";
 import { ASSET_DRAG_TYPE } from "./MediaBin";
 
@@ -97,7 +97,9 @@ export function Timeline() {
     if (e.shiftKey || e.ctrlKey) sel = sel.includes(clip.id) ? sel.filter((id) => id !== clip.id) : [...sel, clip.id];
     else if (!sel.includes(clip.id)) sel = [clip.id];
     st.select(sel);
-    if (st.project.tracks.find((t) => t.id === clip.trackId)?.role !== "subtitles") useUi.getState().setSide("edit");
+    // En pantalla grande, tocar un subtítulo lo muestra en la lista de la izquierda.
+    const isSubtitle = st.project.tracks.find((t) => t.id === clip.trackId)?.role === "subtitles";
+    if (isSubtitle && !window.matchMedia(COMPACT_QUERY).matches) useUi.getState().editSubtitle(clip.id);
     const moving = mode === "move" ? sel : [clip.id];
     const originals = new Map(st.project.clips.filter((c) => moving.includes(c.id)).map((c) => [c.id, c]));
     const others = st.project.clips.filter((c) => !moving.includes(c.id));
@@ -297,7 +299,7 @@ export function Timeline() {
                           backgroundImage: asset?.thumbnail ? `url(${asset.thumbnail})` : undefined,
                         }}
                         onPointerDown={(e) => startDrag(e, c, "move")}
-                        onDoubleClick={() => useUi.getState().setSheet("edit")}
+                        onDoubleClick={() => (t.role === "subtitles" ? useUi.getState().editSubtitle(c.id) : useUi.getState().setSheet("edit"))}
                         title={c.type === "text" ? c.text : asset?.name}
                       >
                         {c.type === "media" && asset?.kind !== "image" && t.kind === "audio" && (

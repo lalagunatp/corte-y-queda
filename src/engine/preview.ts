@@ -1,7 +1,7 @@
 import { assetUrl } from "../media";
 import type { MediaClip, Project } from "../types";
 import { fadeFactor, isActive } from "../util";
-import { type FrameSource, drawFrame, sourceTime } from "./compositor";
+import { type FrameSource, type Rect, drawFrame, sourceTime } from "./compositor";
 
 interface Voice {
   el: HTMLMediaElement;
@@ -108,7 +108,7 @@ export class PreviewEngine {
   }
 
   /** Sincroniza los elementos con t y dibuja el fotograma. */
-  render(ctx: CanvasRenderingContext2D, p: Project, t: number, playing: boolean) {
+  render(ctx: CanvasRenderingContext2D, p: Project, t: number, playing: boolean, selected: string[] = []) {
     const assets = new Map(p.assets.map((a) => [a.id, a]));
     const tracks = new Map(p.tracks.map((tr) => [tr.id, tr]));
     const live = new Set<string>();
@@ -143,13 +143,44 @@ export class PreviewEngine {
     }
     for (const id of [...this.voices.keys()]) if (!live.has(id)) this.drop(id);
 
-    drawFrame(ctx, p, t, (c): FrameSource | null => {
-      const asset = assets.get(c.assetId);
-      if (!asset) return null;
-      if (asset.kind === "image") return this.image(c.assetId);
-      const el = this.voices.get(c.id)?.el;
-      return el instanceof HTMLVideoElement && el.readyState >= 2 ? el : null;
-    });
+    const boxes: { id: string; box: Rect }[] = [];
+    drawFrame(
+      ctx,
+      p,
+      t,
+      (c): FrameSource | null => {
+        const asset = assets.get(c.assetId);
+        if (!asset) return null;
+        if (asset.kind === "image") return this.image(c.assetId);
+        const el = this.voices.get(c.id)?.el;
+        return el instanceof HTMLVideoElement && el.readyState >= 2 ? el : null;
+      },
+      (c, box) => boxes.push({ id: c.id, box }),
+    );
+    this.textBoxes = boxes;
+
+    // Marco del texto seleccionado: solo en la vista previa, nunca en la exportación.
+    const scale = p.width / ctx.canvas.clientWidth || 1;
+    for (const { id, box } of boxes) {
+      if (!selected.includes(id)) continue;
+      ctx.save();
+      ctx.strokeStyle = "#3ecfb2";
+      ctx.lineWidth = 2 * scale;
+      ctx.setLineDash([6 * scale, 4 * scale]);
+      ctx.strokeRect(box.x, box.y, box.w, box.h);
+      ctx.restore();
+    }
+  }
+
+  private textBoxes: { id: string; box: Rect }[] = [];
+
+  /** Texto visible bajo un punto del lienzo (coordenadas del proyecto); el de encima gana. */
+  textAt(x: number, y: number): string | null {
+    for (let i = this.textBoxes.length - 1; i >= 0; i--) {
+      const { id, box } = this.textBoxes[i];
+      if (x >= box.x && x <= box.x + box.w && y >= box.y && y <= box.y + box.h) return id;
+    }
+    return null;
   }
 
   dispose() {

@@ -14,20 +14,18 @@ import { installShortcuts } from "./shortcuts";
 import { useEditor } from "./store";
 import { COMPACT_QUERY, guideSeen, useMediaQuery, useUi } from "./ui";
 
-function Sheet({ title, onClose, children }: { title: string; onClose(): void; children: React.ReactNode }) {
+/** Panel acoplado bajo la vista previa en pantallas pequeñas (ocupa el sitio de la línea de tiempo). */
+function Dock({ title, onClose, children }: { title: string; onClose(): void; children: React.ReactNode }) {
   return (
-    <div className="sheet-back" onClick={onClose}>
-      <div className="sheet" onClick={(e) => e.stopPropagation()} role="dialog" aria-label={title}>
-        <div className="sheet-head">
-          <span className="grabber" />
-          <strong>{title}</strong>
-          <button className="ghost" onClick={onClose} aria-label="Cerrar">
-            <Icon name="close" />
-          </button>
-        </div>
-        <div className="sheet-body">{children}</div>
+    <section className="dock" aria-label={title}>
+      <div className="dock-head">
+        <strong>{title}</strong>
+        <button className="ghost" onClick={onClose} aria-label="Cerrar">
+          <Icon name="close" />
+        </button>
       </div>
-    </div>
+      <div className="dock-body">{children}</div>
+    </section>
   );
 }
 
@@ -39,7 +37,7 @@ export function App() {
   const canRedo = useEditor((s) => s.future.length > 0);
   const projectName = useEditor((s) => s.project.name);
   const s = useEditor.getState;
-  const { sheet, setSheet, side, setSide, exporting, setExporting, help, setHelp } = useUi();
+  const { sheet, setSheet, left, setLeft, exporting, setExporting, help, setHelp } = useUi();
   const compact = useMediaQuery(COMPACT_QUERY);
   const [settings, setSettings] = useState(false);
   const [ready, setReady] = useState(false);
@@ -78,7 +76,7 @@ export function App() {
 
   return (
     <div
-      className={`app ${compact ? "compact" : ""}`}
+      className={`app ${compact ? "compact" : ""} ${compact && sheet ? "docked" : ""}`}
       onDragOver={(e) => e.dataTransfer.types.includes("Files") && e.preventDefault()}
       onDrop={(e) => {
         if (!e.dataTransfer.files.length) return;
@@ -118,25 +116,47 @@ export function App() {
         )}
       </header>
 
-      <main className="workspace">
-        {!compact && <MediaBin />}
-        <Preview />
+      <main className={`workspace ${left === "subtitles" ? "wide-left" : ""}`}>
         {!compact && (
-          <aside className="inspector">
+          <aside className="leftcol">
             <div className="tabs" role="tablist">
-              <button role="tab" aria-selected={side === "edit"} className={side === "edit" ? "on" : ""} onClick={() => setSide("edit")}>
-                Editar
+              <button role="tab" aria-selected={left === "media"} className={left === "media" ? "on" : ""} onClick={() => setLeft("media")}>
+                Medios
               </button>
-              <button role="tab" aria-selected={side === "subtitles"} className={side === "subtitles" ? "on" : ""} onClick={() => setSide("subtitles")}>
+              <button role="tab" aria-selected={left === "subtitles"} className={left === "subtitles" ? "on" : ""} onClick={() => setLeft("subtitles")}>
                 Subtítulos
               </button>
             </div>
-            {side === "edit" ? <Inspector /> : <Subtitles />}
+            <div className="leftcol-body">{left === "media" ? <MediaBin /> : <Subtitles />}</div>
+          </aside>
+        )}
+        <Preview />
+        {!compact && (
+          <aside className="inspector">
+            <h2 className="panel-title">Editar</h2>
+            <Inspector />
           </aside>
         )}
       </main>
 
-      <Timeline />
+      {/* En pantallas pequeñas el panel abierto ocupa el sitio de la línea de tiempo: la vista previa sigue visible. */}
+      {compact && sheet ? (
+        <Dock title={sheet === "media" ? "Medios" : sheet === "edit" ? "Editar" : "Subtítulos"} onClose={() => setSheet(null)}>
+          {sheet === "media" && <MediaBin />}
+          {sheet === "edit" && (
+            <div className="inspector">
+              <Inspector />
+            </div>
+          )}
+          {sheet === "subtitles" && (
+            <div className="inspector">
+              <Subtitles />
+            </div>
+          )}
+        </Dock>
+      ) : (
+        <Timeline />
+      )}
 
       {compact && (
         <nav className="bottomnav">
@@ -168,25 +188,6 @@ export function App() {
         </nav>
       )}
 
-      {compact && sheet === "media" && (
-        <Sheet title="Medios" onClose={() => setSheet(null)}>
-          <MediaBin />
-        </Sheet>
-      )}
-      {compact && sheet === "edit" && (
-        <Sheet title="Editar" onClose={() => setSheet(null)}>
-          <div className="inspector">
-            <Inspector />
-          </div>
-        </Sheet>
-      )}
-      {compact && sheet === "subtitles" && (
-        <Sheet title="Subtítulos" onClose={() => setSheet(null)}>
-          <div className="inspector">
-            <Subtitles />
-          </div>
-        </Sheet>
-      )}
       {settings && <ProjectSettings onClose={() => setSettings(false)} />}
       {exporting && <ExportDialog onClose={() => setExporting(false)} />}
       {help && <Guide onClose={() => setHelp(false)} />}
