@@ -6,6 +6,7 @@ import { Preview } from "./components/Preview";
 import { Timeline } from "./components/Timeline";
 import { forgetAsset } from "./media";
 import { restoreLastProject, startAutosave } from "./persistence";
+import { useInstallPrompt } from "./pwa";
 import { installShortcuts } from "./shortcuts";
 import { useEditor } from "./store";
 import { ASPECTS } from "./types";
@@ -18,6 +19,7 @@ export function App() {
   const s = useEditor.getState;
   const [exporting, setExporting] = useState(false);
   const [ready, setReady] = useState(false);
+  const install = useInstallPrompt();
 
   useEffect(() => {
     let stopAutosave = () => {};
@@ -96,6 +98,11 @@ export function App() {
         </button>
         <span className="grow">{status && <span className="status">{status}</span>}</span>
         <span className="badge" title="Todo se procesa y guarda en este equipo">🔒 Local · sin cuenta</span>
+        {install && (
+          <button onClick={() => void install()} title="Instala Corte y Queda como aplicación; funciona sin conexión">
+            ⬇ Instalar app
+          </button>
+        )}
         <button className="primary" onClick={() => setExporting(true)} disabled={!project.clips.length}>
           Exportar
         </button>
