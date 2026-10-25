@@ -1,6 +1,6 @@
 import { decodedAudio } from "../media";
 import type { MediaClip, SubtitleLine } from "../types";
-import type { CaptionChunk, CaptionMessage } from "./captionsWorker";
+import type { CaptionMessage } from "./captionsWorker";
 
 const WHISPER_RATE = 16000;
 
@@ -10,9 +10,10 @@ const WHISPER_RATE = 16000;
  * gráfica en las pruebas (base: 61 s para 2:23); `downloadMB` es el rango aproximado GPU/CPU.
  */
 export const CAPTION_MODELS = [
-  { id: "onnx-community/whisper-tiny", name: "Rápida", hint: "Menos exacta", speed: 0.25, downloadMB: "40–60" },
-  { id: "onnx-community/whisper-base", name: "Normal", hint: "Recomendada", speed: 0.45, downloadMB: "80–150" },
-  { id: "onnx-community/whisper-small", name: "Precisa", hint: "Más lenta", speed: 1, downloadMB: "250–480" },
+  // Variantes "_timestamped": exportadas con atenciones cruzadas para dar tiempos por palabra.
+  { id: "onnx-community/whisper-tiny_timestamped", name: "Rápida", hint: "Menos exacta", speed: 0.25, downloadMB: "40–80" },
+  { id: "onnx-community/whisper-base_timestamped", name: "Normal", hint: "Recomendada", speed: 0.45, downloadMB: "80–150" },
+  { id: "onnx-community/whisper-small_timestamped", name: "Precisa", hint: "Más lenta", speed: 1, downloadMB: "250–480" },
 ];
 export const DEFAULT_CAPTION_MODEL = CAPTION_MODELS[1].id;
 
@@ -49,62 +50,69 @@ async function clipAudio16k(c: MediaClip): Promise<Float32Array> {
   return (await ctx.startRendering()).getChannelData(0);
 }
 
-/** Divide las frases largas para que cada subtítulo quepa en dos líneas cortas. */
-function splitLong(text: string, start: number, end: number, maxChars = 42) {
-  const words = text.split(/\s+/);
-  if (text.length <= maxChars) return [{ text, start, end }];
-  const parts: string[] = [];
-  let cur = "";
-  for (const w of words) {
-    if ((cur + " " + w).trim().length > maxChars && cur) {
-      parts.push(cur);
-      cur = w;
-    } else cur = (cur + " " + w).trim();
-  }
-  if (cur) parts.push(cur);
-  const span = (end - start) / text.length;
-  let t = start;
-  return parts.map((p) => {
-    const d = Math.max(0.6, p.length * span);
-    const r = { text: p, start: t, end: Math.min(end, t + d) };
-    t += d;
-    return r;
-  });
+let worker: Worker | null = null;
+
+/** Un solo worker que vive entre usos: así el modelo ya cargado se reutiliza. */
+function captionWorker(): Worker {
+  worker ??= new Worker(new URL("./captionsWorker.ts", import.meta.url), { type: "module" });
+  return worker;
 }
 
+export interface CaptionStream {
+  /** Líneas nuevas ya en tiempo del proyecto; `until` es hasta dónde está procesado el clip. */
+  onLines(lines: SubtitleLine[], until: number): void;
+  /** Descarta las líneas entregadas en esta pasada (el motor se reinicia en la CPU). */
+  onReset(): void;
+  onProgress(stage: string, fraction: number | null): void;
+}
+
+/**
+ * Genera subtítulos de un clip y los entrega por partes, en tiempo del proyecto.
+ * Devuelve cuántas líneas se crearon. Cancelar detiene el trabajo al instante.
+ */
 export async function generateCaptions(
   c: MediaClip,
-  opts: { language: string | null; model: string; signal?: AbortSignal; onProgress(stage: string, fraction: number | null): void },
-): Promise<SubtitleLine[]> {
+  opts: { language: string | null; model: string; maxChars: number; signal?: AbortSignal } & CaptionStream,
+): Promise<number> {
   opts.onProgress("Preparando audio", null);
   const audio = await clipAudio16k(c);
-  const worker = new Worker(new URL("./captionsWorker.ts", import.meta.url), { type: "module" });
+  // Los tiempos del worker son del tramo extraído, que ya está a la velocidad del clip.
+  const toProject = (l: SubtitleLine): SubtitleLine => ({ start: c.start + l.start, end: c.start + Math.min(l.end, c.duration), text: l.text });
+  const w = captionWorker();
+  let count = 0;
+  let onAbort = () => {};
   try {
-    const chunks = await new Promise<CaptionChunk[]>((resolve, reject) => {
-      // Cancelar termina el worker al instante, también a mitad de la descarga o de un tramo.
-      const abort = () => reject(new DOMException("Cancelado", "AbortError"));
-      if (opts.signal?.aborted) return abort();
-      opts.signal?.addEventListener("abort", abort, { once: true });
-      worker.onmessage = (ev: MessageEvent<CaptionMessage>) => {
+    await new Promise<void>((resolve, reject) => {
+      onAbort = () => {
+        // Terminar es la única forma de cortar un modelo a mitad; el siguiente uso lo recarga.
+        w.terminate();
+        worker = null;
+        reject(new DOMException("Cancelado", "AbortError"));
+      };
+      if (opts.signal?.aborted) return onAbort();
+      opts.signal?.addEventListener("abort", onAbort, { once: true });
+      w.onmessage = (ev: MessageEvent<CaptionMessage>) => {
         const m = ev.data;
         if (m.type === "progress") opts.onProgress(m.stage, m.fraction);
-        else if (m.type === "done") resolve(m.chunks);
+        else if (m.type === "lines") {
+          const lines = m.lines.filter((l) => l.start < c.duration).map(toProject);
+          count += lines.length;
+          opts.onLines(lines, c.start + Math.min(m.until, c.duration));
+        } else if (m.type === "reset") {
+          count = 0;
+          opts.onReset();
+        } else if (m.type === "done") resolve();
         else reject(new Error(m.message));
       };
-      worker.onerror = (e) => reject(new Error(e.message || "No se pudo iniciar el reconocimiento de voz"));
-      worker.postMessage({ audio, language: opts.language, model: opts.model }, [audio.buffer]);
+      w.onerror = (e) => {
+        worker = null;
+        reject(new Error(e.message || "No se pudo iniciar el reconocimiento de voz"));
+      };
+      w.postMessage({ audio, language: opts.language, model: opts.model, maxChars: opts.maxChars }, [audio.buffer]);
     });
     markCaptionModelReady(opts.model);
-    // Las marcas de Whisper son relativas al tramo extraído, que ya está a la velocidad del clip.
-    return chunks
-      .flatMap((ch) => splitLong(ch.text, ch.start, ch.end))
-      .filter((s) => s.start < c.duration)
-      .map((s) => ({
-        start: c.start + s.start,
-        end: c.start + Math.max(s.start + 0.3, Math.min(s.end, c.duration)),
-        text: s.text,
-      }));
+    return count;
   } finally {
-    worker.terminate();
+    opts.signal?.removeEventListener("abort", onAbort);
   }
 }

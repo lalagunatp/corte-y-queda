@@ -7,6 +7,7 @@ import type { MediaClip, TextClip } from "../types";
 import { COMPACT_QUERY, useUi } from "../ui";
 import { clipEnd } from "../util";
 import { Icon } from "./Icon";
+import { engineRef } from "./Preview";
 
 const LANGUAGES: [string, string][] = [
   ["spanish", "Español"],
@@ -52,7 +53,6 @@ function TimeField({ value, label, onCommit }: { value: number; label: string; o
 function Generate({ onDone }: { onDone(n: number): void }) {
   const clips = useEditor((s) => s.project.clips);
   const assets = useEditor((s) => s.project.assets);
-  const addSubtitles = useEditor((s) => s.addSubtitles);
   const preferred = useUi((s) => s.subtitleSource);
   const kinds = new Map(assets.map((a) => [a.id, a]));
   const sources = clips.filter((c): c is MediaClip => c.type === "media" && kinds.get(c.assetId)?.kind !== "image").sort((a, b) => a.start - b.start);
@@ -61,6 +61,8 @@ function Generate({ onDone }: { onDone(n: number): void }) {
   const [model, setModel] = useState(DEFAULT_CAPTION_MODEL);
   const [busy, setBusy] = useState<{ stage: string; fraction: number | null } | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [playAlong, setPlayAlong] = useState(true);
+  const project = useEditor((s) => s.project);
   const abort = useRef<AbortController | null>(null);
 
   useEffect(() => {
@@ -73,24 +75,75 @@ function Generate({ onDone }: { onDone(n: number): void }) {
 
   const run = async () => {
     if (!clip) return;
+    const s = useEditor.getState;
     setError(null);
     setBusy({ stage: "Preparando audio", fraction: null });
     abort.current = new AbortController();
+    engineRef.current?.resumeAudio();
+
+    // Volver a generar sobre el mismo video sustituye los subtítulos que ya cubren ese tramo.
+    const clipEndT = clip.start + clip.duration;
+    const overlapping = subtitleClips(s().project).filter((l) => l.start < clipEndT && clipEnd(l) > clip.start);
+    const replace = overlapping.length > 0 && confirm(`Este video ya tiene ${overlapping.length} subtítulos. ¿Reemplazarlos por los nuevos?`);
+
+    // Todo el resultado cuenta como un solo paso para Deshacer.
+    s().beginGesture();
+    if (replace) {
+      const gone = new Set(overlapping.map((l) => l.id));
+      s().edit((p) => ({ clips: p.clips.filter((c) => !gone.has(c.id)) }));
+    }
+
+    const created = new Set<string>();
+    let processedUntil = clip.start;
+    let finished = false;
+    let waiting = false;
+    let started = false;
+    // Reproducción en directo: si el cabezal alcanza la parte aún sin procesar, se espera.
+    const follow = window.setInterval(() => {
+      if (!playAlong || !started) return;
+      const st = s();
+      if (!finished && st.playing && st.time > processedUntil - 0.2) {
+        st.setPlaying(false);
+        waiting = true;
+      } else if (waiting && (finished || processedUntil > st.time + 2)) {
+        st.setPlaying(true);
+        waiting = false;
+      }
+    }, 120);
+
     try {
-      const lines = await generateCaptions(clip, {
+      const n = await generateCaptions(clip, {
         language: language || null,
         model,
+        maxChars: project.width < project.height ? 32 : 42,
         signal: abort.current.signal,
-        onProgress: (stage, fraction) => setBusy({ stage, fraction }),
+        onProgress: (stage, fraction) => setBusy({ stage: waiting ? "Esperando la siguiente parte…" : stage, fraction }),
+        onLines: (lines, until) => {
+          for (const id of s().addSubtitles(lines)) created.add(id);
+          processedUntil = until;
+          if (playAlong && !started && lines.length) {
+            started = true;
+            s().select([]);
+            s().setTime(Math.max(clip.start, lines[0].start - 0.4));
+            s().setPlaying(true);
+          }
+        },
+        onReset: () => {
+          s().edit((p) => ({ clips: p.clips.filter((c) => !created.has(c.id)) }));
+          created.clear();
+          processedUntil = clip.start;
+        },
       });
-      if (!lines.length) setError("No se detectó voz en este clip.");
-      else {
-        addSubtitles(lines);
-        onDone(lines.length);
-      }
+      finished = true;
+      if (!n) setError("No se detectó voz en este clip.");
+      else onDone(n);
     } catch (e) {
       if (!(e instanceof DOMException && e.name === "AbortError")) setError(e instanceof Error ? e.message : String(e));
     } finally {
+      finished = true;
+      window.clearInterval(follow);
+      if (waiting) s().setPlaying(false);
+      s().endGesture();
       setBusy(null);
       abort.current = null;
     }
@@ -169,10 +222,20 @@ function Generate({ onDone }: { onDone(n: number): void }) {
         </button>
       )}
 
+      <button className={`toggle ${playAlong ? "on" : ""}`} role="switch" aria-checked={playAlong} onClick={() => setPlayAlong(!playAlong)}>
+        <span>Reproducir mientras se crean</span>
+        <span className="knob" />
+      </button>
+
       {error && <p className="error">{error}</p>}
 
       <ul className="facts">
-        <li>Tardará {estimate}. Deja este panel abierto mientras trabaja.</li>
+        <li>
+          {playAlong
+            ? "El video se reproduce y los subtítulos aparecen a medida que se crean; si la reproducción los alcanza, espera un momento."
+            : `Tardará ${estimate}.`}{" "}
+          Deja este panel abierto mientras trabaja.
+        </li>
         {firstTime && <li>La primera vez se descarga el reconocimiento de voz ({quality.downloadMB} MB). Solo ocurre una vez.</li>}
         <li>Tu audio no se sube a internet: todo se hace en este equipo.</li>
       </ul>
