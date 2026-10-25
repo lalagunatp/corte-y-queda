@@ -1,10 +1,29 @@
 import { create } from "zustand";
-import type { Clip, MediaAsset, MediaClip, Project, TextClip, Track, TrackKind } from "./types";
+import type { Clip, MediaAsset, MediaClip, Project, SubtitleLine, TextClip, Track, TrackKind } from "./types";
 import { clipEnd, projectDuration, uid } from "./util";
 
 type Snapshot = Pick<Project, "tracks" | "clips" | "width" | "height" | "fps" | "background" | "name">;
 
 const HISTORY_LIMIT = 200;
+
+export type SubtitleStyle = Pick<TextClip, "fontSize" | "color" | "background" | "bold" | "y">;
+
+export const DEFAULT_SUBTITLE_STYLE: SubtitleStyle = { fontSize: 56, color: "#ffffff", background: "#000000aa", bold: true, y: 0.72 };
+
+export const subtitleStyleOf = (c: TextClip): SubtitleStyle => ({
+  fontSize: c.fontSize,
+  color: c.color,
+  background: c.background,
+  bold: c.bold,
+  y: c.y,
+});
+
+/** Clips de la pista de subtítulos, ordenados por inicio. */
+export function subtitleClips(p: Project): TextClip[] {
+  const track = p.tracks.find((t) => t.role === "subtitles");
+  if (!track) return [];
+  return p.clips.filter((c): c is TextClip => c.type === "text" && c.trackId === track.id).sort((a, b) => a.start - b.start);
+}
 
 export function newProject(): Project {
   return {
@@ -66,7 +85,9 @@ interface EditorState {
   removeAssetFromProject(id: string): void;
   addClipFromAsset(assetId: string, at?: { trackId?: string; start?: number }): void;
   addText(text?: string): void;
-  addTextClips(clips: Omit<TextClip, "id" | "trackId">[], trackName: string): void;
+  /** Añade líneas a la pista de subtítulos (la crea si falta); con replace sustituye las existentes. */
+  addSubtitles(lines: SubtitleLine[], opts?: { replace?: boolean }): string[];
+  updateClips(ids: string[], patch: Partial<Omit<TextClip, "type">>): void;
   updateClip(id: string, patch: Partial<Omit<MediaClip, "type">> | Partial<Omit<TextClip, "type">>): void;
   deleteSelected(): void;
   duplicateSelected(): void;
@@ -196,7 +217,7 @@ export const useEditor = create<EditorState>((set, get) => ({
 
   addText: (text = "Escribe aquí") => {
     const { project, time } = get();
-    let track = project.tracks.find((t) => t.kind === "text");
+    let track = project.tracks.find((t) => t.kind === "text" && t.role !== "subtitles");
     const extra: Track[] = [];
     if (!track) {
       track = { id: uid("track"), kind: "text", name: "Texto", muted: false, hidden: false };
@@ -222,14 +243,40 @@ export const useEditor = create<EditorState>((set, get) => ({
     set({ selected: [clip.id] });
   },
 
-  addTextClips: (clips, trackName) => {
-    const track: Track = { id: uid("track"), kind: "text", name: trackName, muted: false, hidden: false };
-    const created: TextClip[] = clips.map((c) => ({ ...c, id: uid("clip"), trackId: track.id }));
-    get().edit((p) => ({ tracks: [track, ...p.tracks], clips: [...p.clips, ...created] }));
+  addSubtitles: (lines, opts = {}) => {
+    const { project } = get();
+    const existing = project.tracks.find((t) => t.role === "subtitles");
+    const track: Track = existing ?? { id: uid("track"), kind: "text", name: "Subtítulos", muted: false, hidden: false, role: "subtitles" };
+    const current = project.clips.filter((c): c is TextClip => c.type === "text" && c.trackId === track.id);
+    // Las líneas nuevas heredan el estilo de los subtítulos que ya existen.
+    const style = current[0] ? subtitleStyleOf(current[0]) : DEFAULT_SUBTITLE_STYLE;
+    const created: TextClip[] = lines.map((l) => ({
+      ...style,
+      id: uid("clip"),
+      type: "text",
+      trackId: track.id,
+      start: l.start,
+      duration: Math.max(0.2, l.end - l.start),
+      fadeIn: 0,
+      fadeOut: 0,
+      text: l.text,
+      x: 0,
+    }));
+    const removed = new Set(opts.replace ? current.map((c) => c.id) : []);
+    get().edit((p) => ({
+      tracks: existing ? p.tracks : [track, ...p.tracks],
+      clips: [...p.clips.filter((c) => !removed.has(c.id)), ...created],
+    }));
+    return created.map((c) => c.id);
   },
 
   updateClip: (id, patch) =>
     get().edit((p) => ({ clips: p.clips.map((c) => (c.id === id ? ({ ...c, ...patch } as Clip) : c)) })),
+
+  updateClips: (ids, patch) => {
+    const set = new Set(ids);
+    get().edit((p) => ({ clips: p.clips.map((c) => (set.has(c.id) ? ({ ...c, ...patch } as Clip) : c)) }));
+  },
 
   deleteSelected: () => {
     const sel = new Set(get().selected);

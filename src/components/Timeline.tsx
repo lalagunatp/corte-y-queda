@@ -97,6 +97,7 @@ export function Timeline() {
     if (e.shiftKey || e.ctrlKey) sel = sel.includes(clip.id) ? sel.filter((id) => id !== clip.id) : [...sel, clip.id];
     else if (!sel.includes(clip.id)) sel = [clip.id];
     st.select(sel);
+    if (st.project.tracks.find((t) => t.id === clip.trackId)?.role !== "subtitles") useUi.getState().setSide("edit");
     const moving = mode === "move" ? sel : [clip.id];
     const originals = new Map(st.project.clips.filter((c) => moving.includes(c.id)).map((c) => [c.id, c]));
     const others = st.project.clips.filter((c) => !moving.includes(c.id));

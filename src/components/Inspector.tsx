@@ -1,8 +1,6 @@
-import { useState } from "react";
-import { CAPTION_MODELS, generateCaptions } from "../ai/captions";
 import { useEditor } from "../store";
 import type { MediaClip, TextClip } from "../types";
-import { COMPACT_QUERY, useMediaQuery, useUi } from "../ui";
+import { useUi } from "../ui";
 import { Icon } from "./Icon";
 
 function Slider(props: { label: string; value: number; min: number; max: number; step: number; unit?: string; onChange(v: number): void }) {
@@ -77,70 +75,14 @@ function DeleteButton({ id }: { id: string }) {
   );
 }
 
-const LANGUAGES: [string, string][] = [
-  ["spanish", "Español"],
-  ["english", "Inglés"],
-  ["portuguese", "Portugués"],
-  ["french", "Francés"],
-  ["german", "Alemán"],
-  ["italian", "Italiano"],
-  ["", "Detectar automáticamente"],
-];
-
 function Captions({ clip }: { clip: MediaClip }) {
-  const addTextClips = useEditor((s) => s.addTextClips);
-  const [language, setLanguage] = useState("spanish");
-  const [model, setModel] = useState(CAPTION_MODELS[0].id);
-  const [busy, setBusy] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [done, setDone] = useState(false);
-
-  const run = async () => {
-    setError(null);
-    setDone(false);
-    try {
-      const clips = await generateCaptions(clip, {
-        language: language || null,
-        model,
-        onProgress: (stage, f) => setBusy(f == null ? stage : `${stage} ${Math.round(f * 100)}%`),
-      });
-      if (!clips.length) setError("No se detectó voz en este clip.");
-      else {
-        addTextClips(clips, "Subtítulos");
-        setDone(true);
-      }
-    } catch (e) {
-      setError(e instanceof Error ? e.message : String(e));
-    } finally {
-      setBusy(null);
-    }
-  };
-
+  const open = useUi((s) => s.openSubtitles);
   return (
     <section className="group">
-      <h4>Subtítulos automáticos</h4>
-      <div className="inline">
-        <select value={language} onChange={(e) => setLanguage(e.target.value)} disabled={!!busy} aria-label="Idioma">
-          {LANGUAGES.map(([v, l]) => (
-            <option key={v} value={v}>{l}</option>
-          ))}
-        </select>
-        <button onClick={run} disabled={!!busy}>
-          <Icon name="sparkles" /> {busy ? "…" : "Generar"}
-        </button>
-      </div>
-      {busy && <p className="muted small">{busy}</p>}
-      {done && <p className="ok small">Subtítulos añadidos a la línea de tiempo.</p>}
-      {error && <p className="error small">{error}</p>}
-      <details>
-        <summary>Modelo</summary>
-        <select value={model} onChange={(e) => setModel(e.target.value)} disabled={!!busy}>
-          {CAPTION_MODELS.map((m) => (
-            <option key={m.id} value={m.id}>{m.label}</option>
-          ))}
-        </select>
-        <p className="muted small">Se ejecuta en tu equipo. La primera vez descarga el modelo.</p>
-      </details>
+      <h4>Subtítulos</h4>
+      <button onClick={() => open(clip.id)}>
+        <Icon name="sparkles" /> Generar subtítulos de este clip
+      </button>
     </section>
   );
 }
@@ -287,11 +229,18 @@ function TextInspector({ clip }: { clip: TextClip }) {
   const update = useEditor((s) => s.updateClip);
   const u = (patch: Partial<TextClip>) => update(clip.id, patch);
   const bgOn = !/^#[0-9a-f]{6}00$/i.test(clip.background);
+  const isSubtitle = useEditor((s) => s.project.tracks.find((t) => t.id === clip.trackId)?.role === "subtitles");
+  const openSubtitles = useUi((s) => s.openSubtitles);
   return (
     <>
       <h3>
-        <Icon name="type" /> Texto
+        <Icon name="type" /> {isSubtitle ? "Subtítulo" : "Texto"}
       </h3>
+      {isSubtitle && (
+        <button onClick={() => openSubtitles()}>
+          <Icon name="sliders" /> Editar todos los subtítulos
+        </button>
+      )}
       <section className="group">
         <textarea value={clip.text} rows={2} onChange={(e) => u({ text: e.target.value })} autoFocus={clip.text === "Escribe aquí"} aria-label="Texto" />
       </section>
@@ -360,10 +309,8 @@ export function Inspector() {
   const selected = useEditor((s) => s.selected);
   const clip = useEditor((s) => s.project.clips.find((c) => c.id === s.selected[0]));
   const addText = useEditor((s) => s.addText);
-  const compact = useMediaQuery(COMPACT_QUERY);
   return (
-    <aside className="inspector">
-      {!compact && <h2 className="panel-title">Editar</h2>}
+    <>
       {!clip && (
         <div className="empty">
           <p className="muted">Selecciona un clip en la línea de tiempo para editarlo.</p>
@@ -375,6 +322,6 @@ export function Inspector() {
       {clip && selected.length > 1 && <p className="muted small">{selected.length} clips seleccionados · se muestra el primero</p>}
       {clip?.type === "media" && <MediaInspector clip={clip} />}
       {clip?.type === "text" && <TextInspector clip={clip} />}
-    </aside>
+    </>
   );
 }

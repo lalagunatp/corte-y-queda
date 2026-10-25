@@ -6,6 +6,7 @@ import { Inspector } from "./components/Inspector";
 import { MediaBin, importIntoProject } from "./components/MediaBin";
 import { Preview } from "./components/Preview";
 import { ProjectSettings } from "./components/ProjectSettings";
+import { Subtitles } from "./components/Subtitles";
 import { Timeline } from "./components/Timeline";
 import { restoreLastProject, startAutosave } from "./persistence";
 import { useInstallPrompt } from "./pwa";
@@ -38,7 +39,7 @@ export function App() {
   const canRedo = useEditor((s) => s.future.length > 0);
   const projectName = useEditor((s) => s.project.name);
   const s = useEditor.getState;
-  const { sheet, setSheet, exporting, setExporting, help, setHelp } = useUi();
+  const { sheet, setSheet, side, setSide, exporting, setExporting, help, setHelp } = useUi();
   const compact = useMediaQuery(COMPACT_QUERY);
   const [settings, setSettings] = useState(false);
   const [ready, setReady] = useState(false);
@@ -120,7 +121,19 @@ export function App() {
       <main className="workspace">
         {!compact && <MediaBin />}
         <Preview />
-        {!compact && <Inspector />}
+        {!compact && (
+          <aside className="inspector">
+            <div className="tabs" role="tablist">
+              <button role="tab" aria-selected={side === "edit"} className={side === "edit" ? "on" : ""} onClick={() => setSide("edit")}>
+                Editar
+              </button>
+              <button role="tab" aria-selected={side === "subtitles"} className={side === "subtitles" ? "on" : ""} onClick={() => setSide("subtitles")}>
+                Subtítulos
+              </button>
+            </div>
+            {side === "edit" ? <Inspector /> : <Subtitles />}
+          </aside>
+        )}
       </main>
 
       <Timeline />
@@ -134,6 +147,10 @@ export function App() {
           <button className={sheet === "edit" ? "on" : ""} onClick={() => setSheet(sheet === "edit" ? null : "edit")}>
             <Icon name="sliders" size={22} />
             Editar{hasSelection && <span className="dot" />}
+          </button>
+          <button className={sheet === "subtitles" ? "on" : ""} onClick={() => setSheet(sheet === "subtitles" ? null : "subtitles")}>
+            <Icon name="captions" size={22} />
+            Subtítulos
           </button>
           <button
             onClick={() => {
@@ -158,7 +175,16 @@ export function App() {
       )}
       {compact && sheet === "edit" && (
         <Sheet title="Editar" onClose={() => setSheet(null)}>
-          <Inspector />
+          <div className="inspector">
+            <Inspector />
+          </div>
+        </Sheet>
+      )}
+      {compact && sheet === "subtitles" && (
+        <Sheet title="Subtítulos" onClose={() => setSheet(null)}>
+          <div className="inspector">
+            <Subtitles />
+          </div>
         </Sheet>
       )}
       {settings && <ProjectSettings onClose={() => setSettings(false)} />}

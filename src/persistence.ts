@@ -11,8 +11,11 @@ export async function restoreLastProject(): Promise<{ missing: number } | null> 
   if (!saved) return null;
   const missing = await restoreAssets(saved.assets);
   const lost = new Set(missing);
+  // Proyectos anteriores a la pista de subtítulos dedicada: la primera pista "Subtítulos" pasa a serlo.
+  const legacy = !saved.tracks.some((t) => t.role === "subtitles") && saved.tracks.find((t) => t.kind === "text" && t.name === "Subtítulos");
   useEditor.getState().loadProject({
     ...saved,
+    tracks: legacy ? saved.tracks.map((t) => (t === legacy ? { ...t, role: "subtitles" as const } : t)) : saved.tracks,
     assets: saved.assets.filter((a) => !lost.has(a.id)),
     clips: saved.clips.filter((c) => c.type !== "media" || !lost.has(c.assetId)),
   });

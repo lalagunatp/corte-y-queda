@@ -11,13 +11,21 @@ export async function openExternal(url: string): Promise<void> {
 }
 
 /** Guarda un archivo con el diálogo nativo cuando existe; si no, como descarga. */
-export async function saveFile(blob: Blob, suggestedName: string): Promise<void> {
+export interface FileKind {
+  description: string;
+  mime: string;
+  extension: string;
+}
+
+export const MP4: FileKind = { description: "Vídeo MP4", mime: "video/mp4", extension: ".mp4" };
+
+export async function saveFile(blob: Blob, suggestedName: string, kind: FileKind = MP4): Promise<void> {
   const picker = (window as Window & {
     showSaveFilePicker?: (o: { suggestedName: string; types: { description: string; accept: Record<string, string[]> }[] }) => Promise<FileSystemFileHandle>;
   }).showSaveFilePicker;
   if (picker) {
     try {
-      const handle = await picker({ suggestedName, types: [{ description: "Vídeo MP4", accept: { "video/mp4": [".mp4"] } }] });
+      const handle = await picker({ suggestedName, types: [{ description: kind.description, accept: { [kind.mime]: [kind.extension] } }] });
       const w = await handle.createWritable();
       await w.write(blob);
       await w.close();

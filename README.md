@@ -27,7 +27,11 @@ y sus prioridades salen de las quejas más repetidas de los usuarios de editores
 - Texto con color, fondo, negrita, posición y fundidos.
 - Transiciones: superpón dos clips en la misma pista y usa fundido de salida y de entrada.
 - Formatos 16:9, 9:16, 1:1 y 4:5; 24–60 fps.
-- **Subtítulos automáticos** con Whisper local (tiny, base o small) y división en líneas legibles.
+- **Editor de subtítulos**: lista de líneas con texto, inicio y fin editables; añadir en el cabezal,
+  ajustar inicio/fin al cabezal, estilo común (tamaño, color, fondo, posición) e importación/exportación
+  `.srt` (también lee `.vtt`). Los subtítulos se graban en el MP4 exportado.
+- **Subtítulos automáticos** con Whisper local (tiny, base o small) y división en líneas legibles,
+  que después se corrigen en el editor de subtítulos.
 - **Limpieza de voz**: paso alto, paso bajo, realce de presencia y compresor.
 - Exportación MP4 (H.264 + AAC) con WebCodecs, de 480p a 4K.
 - Autoguardado local del proyecto y de los medios.

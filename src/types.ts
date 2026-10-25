@@ -20,6 +20,15 @@ export interface Track {
   name: string;
   muted: boolean;
   hidden: boolean;
+  /** Pista de texto dedicada a los subtítulos (la que edita el panel Subtítulos). */
+  role?: "subtitles";
+}
+
+/** Una línea de subtítulo independiente del estilo, como en un archivo SRT. */
+export interface SubtitleLine {
+  start: number;
+  end: number;
+  text: string;
 }
 
 interface ClipBase {

@@ -15,23 +15,40 @@ export function useMediaQuery(query: string): boolean {
   return matches;
 }
 
-export type Sheet = "media" | "edit" | null;
+export type Sheet = "media" | "edit" | "subtitles" | null;
+export type SidePanel = "edit" | "subtitles";
 
 interface UiState {
   /** Panel abierto como hoja inferior en pantallas pequeñas. */
   sheet: Sheet;
+  /** Pestaña de la columna derecha en pantallas grandes. */
+  side: SidePanel;
+  /** Clip elegido como fuente para generar subtítulos. */
+  subtitleSource: string | null;
   exporting: boolean;
   help: boolean;
   setSheet(s: Sheet): void;
+  setSide(p: SidePanel): void;
+  /** Abre el panel Subtítulos (como pestaña u hoja según el tamaño de pantalla). */
+  openSubtitles(sourceClipId?: string): void;
   setExporting(v: boolean): void;
   setHelp(v: boolean): void;
 }
 
 export const useUi = create<UiState>((set) => ({
   sheet: null,
+  side: "edit",
+  subtitleSource: null,
   exporting: false,
   help: false,
   setSheet: (sheet) => set({ sheet }),
+  setSide: (side) => set({ side }),
+  openSubtitles: (sourceClipId) =>
+    set({
+      side: "subtitles",
+      sheet: window.matchMedia(COMPACT_QUERY).matches ? "subtitles" : null,
+      ...(sourceClipId ? { subtitleSource: sourceClipId } : {}),
+    }),
   setExporting: (exporting) => set({ exporting }),
   setHelp: (help) => set({ help }),
 }));

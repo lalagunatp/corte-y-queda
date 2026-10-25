@@ -1,5 +1,5 @@
 import { decodedAudio } from "../media";
-import type { MediaClip, TextClip } from "../types";
+import type { MediaClip, SubtitleLine } from "../types";
 import type { CaptionMessage } from "./captionsWorker";
 
 const WHISPER_RATE = 16000;
@@ -50,7 +50,7 @@ function splitLong(text: string, start: number, end: number, maxChars = 42) {
 export async function generateCaptions(
   c: MediaClip,
   opts: { language: string | null; model: string; onProgress(stage: string, fraction: number | null): void },
-): Promise<Omit<TextClip, "id" | "trackId">[]> {
+): Promise<SubtitleLine[]> {
   opts.onProgress("Preparando audio", null);
   const audio = await clipAudio16k(c);
   const worker = new Worker(new URL("./captionsWorker.ts", import.meta.url), { type: "module" });
@@ -65,24 +65,15 @@ export async function generateCaptions(
       worker.onerror = (e) => reject(new Error(e.message));
       worker.postMessage({ audio, language: opts.language, model: opts.model }, [audio.buffer]);
     });
+    // Las marcas de Whisper son relativas al tramo extraído, que ya está a la velocidad del clip.
     return chunks
       .flatMap((ch) => splitLong(ch.text, ch.start, ch.end))
+      .filter((s) => s.start < c.duration)
       .map((s) => ({
-        type: "text" as const,
-        // Las marcas de Whisper son relativas al tramo extraído, que ya está a la velocidad del clip.
         start: c.start + s.start,
-        duration: Math.max(0.3, Math.min(s.end, c.duration) - s.start),
-        fadeIn: 0,
-        fadeOut: 0,
+        end: c.start + Math.max(s.start + 0.3, Math.min(s.end, c.duration)),
         text: s.text,
-        fontSize: 56,
-        color: "#ffffff",
-        background: "#000000aa",
-        bold: true,
-        x: 0,
-        y: 0.72,
-      }))
-      .filter((s) => s.start < c.start + c.duration);
+      }));
   } finally {
     worker.terminate();
   }
