@@ -2,5 +2,5 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 fn main() {
-    montaje_lib::run()
+    corte_y_queda_lib::run()
 }

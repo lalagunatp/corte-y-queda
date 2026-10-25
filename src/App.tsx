@@ -57,7 +57,7 @@ export function App() {
       }}
     >
       <header className="topbar">
-        <strong className="logo">Montaje</strong>
+        <strong className="logo">Corte y Queda</strong>
         <input
           className="pname"
           value={project.name}

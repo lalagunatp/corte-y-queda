@@ -1,11 +1,11 @@
 [package]
-name = "montaje"
+name = "corte-y-queda"
 version = "0.1.0"
 description = "Editor de vídeo local, gratuito y sin marca de agua"
 edition = "2021"
 
 [lib]
-name = "montaje_lib"
+name = "corte_y_queda_lib"
 crate-type = ["staticlib", "cdylib", "rlib"]
 
 [build-dependencies]

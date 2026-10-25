@@ -3,7 +3,7 @@ import { forgetAsset, importFiles } from "../media";
 import { useEditor } from "../store";
 import { formatTime } from "../util";
 
-export const ASSET_DRAG_TYPE = "application/x-montaje-asset";
+export const ASSET_DRAG_TYPE = "application/x-corte-y-queda-asset";
 
 export async function importIntoProject(files: Iterable<File>) {
   const s = useEditor.getState();

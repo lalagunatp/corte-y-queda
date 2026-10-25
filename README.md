@@ -1,4 +1,4 @@
-# Montaje
+# Corte y Queda
 
 Editor de vídeo **local, gratuito y sin marca de agua**, para el navegador y para Windows (Tauri).
 
@@ -6,7 +6,7 @@ Es un proyecto original. No contiene código, recursos ni marcas de CapCut o Byt
 se inspira en lo que hacen los editores modernos en el navegador (WebCodecs, Web Audio, IA local)
 y sus prioridades salen de las quejas más repetidas de los usuarios de editores gratuitos:
 
-| Queja frecuente de los usuarios | Respuesta en Montaje |
+| Queja frecuente de los usuarios | Respuesta en Corte y Queda |
 | --- | --- |
 | Funciones que eran gratis pasan a "Pro" | Todo está incluido; no hay niveles de pago. |
 | Exportación bloqueada o con marca de agua | Exporta MP4 hasta 4K, sin marca de agua ni límites. |
