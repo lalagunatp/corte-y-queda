@@ -39,7 +39,7 @@ export type CaptionMessage =
 const RATE = 16000;
 const VAD_FRAME = 512;
 /** Whisper procesa ventanas de 30 s; se deja margen para el relleno entre tramos. */
-const MAX_WINDOW = 28;
+const MAX_WINDOW = 24;
 /** La primera parte es corta para que los primeros subtítulos (y la reproducción) lleguen antes. */
 const FIRST_WINDOW = 10;
 /** Silencio insertado entre tramos unidos, para que Whisper note la pausa. */
@@ -47,10 +47,10 @@ const JOIN_GAP = 0.3;
 /** Margen de audio que se conserva antes y después de cada tramo con voz. */
 const PAD = 0.25;
 /**
- * Solo se quitan los huecos sin voz más largos que esto: un hueco corto puede contener voz baja
- * que el detector no marcó (medido: se perdía el final de una frase dicha en voz baja).
+ * Los tramos de voz separados por menos de esto se juntan en uno. Medido: juntar huecos de hasta
+ * 1,5 s dejaba canto y habla en un mismo tramo, y Whisper se saltaba el habla tras la música.
  */
-const MIN_REMOVED_GAP = 1.5;
+const MERGE_GAP = 0.3;
 /** Distancia máxima para ajustar el borde de una línea al borde de la voz. */
 const SNAP = 0.35;
 /** Un borde que cae en silencio se lleva al borde de la voz si está a menos de esto. */
@@ -173,7 +173,7 @@ function speechSegments(probs: Float32Array, duration: number): { voice: [number
     const a = Math.max(0, s - PAD);
     const b = Math.min(duration, e + PAD);
     const last = regions.at(-1);
-    if (last && a - last[1] < MIN_REMOVED_GAP) last[1] = b;
+    if (last && a - last[1] < MERGE_GAP) last[1] = b;
     else regions.push([a, b]);
   }
   return { voice, regions };
@@ -185,6 +185,23 @@ interface Piece {
   /** Inicio y fin en el audio original. */
   start: number;
   end: number;
+  /** Audio ya transcrito que se repite solo como contexto; sus palabras se descartan. */
+  context?: boolean;
+}
+
+/** Segundos de la parte anterior que se repiten al inicio de la siguiente como contexto. */
+const CONTEXT = 4;
+
+/**
+ * Antepone a una parte los últimos segundos de la anterior. Medido: una parte que empezaba en
+ * canto con música hacía que Whisper alucinara («J.J…») y perdiera las frases reales que
+ * venían después; con habla previa como contexto se orienta como en una transcripción continua.
+ */
+function withContext(previous: Piece[] | undefined, pieces: Piece[]): Piece[] {
+  const last = previous?.filter((p) => !p.context).at(-1);
+  if (!last) return rebase(pieces);
+  const ctx: Piece = { joined: 0, start: Math.max(last.start, last.end - CONTEXT), end: last.end, context: true };
+  return rebase([ctx, ...pieces]);
 }
 
 /** Junta tramos con voz en ventanas de ≤28 s; un tramo más largo se parte en trozos. */
@@ -252,6 +269,18 @@ interface Word {
   piece: Piece;
 }
 
+/**
+ * Descarta líneas que Whisper inventa sobre música o ruido: casi sin letras («J .J.») o una
+ * misma palabra repetida («¡Ach! ¡Ach! ¡Ach!»).
+ */
+function isSpoken(l: CaptionLine): boolean {
+  const words = l.text.toLowerCase().match(/\p{L}+/gu) ?? [];
+  // Al menos una palabra real: conserva «Sí.» o «No.», descarta letras sueltas.
+  if (!words.some((w) => w.length >= 2)) return false;
+  if (words.length >= 4 && new Set(words).size / words.length < 0.4) return false;
+  return true;
+}
+
 /** Arma líneas con palabras completas: corta en pausas, puntuación, longitud o duración. */
 function buildLines(words: Word[], maxChars: number): CaptionLine[] {
   type L = CaptionLine & { pieceEnd: Piece };
@@ -312,6 +341,103 @@ function snapLines(lines: CaptionLine[], voice: [number, number][], prevEnd: num
   return out;
 }
 
+/** Vuelve a colocar tramos uno tras otro desde cero, con el hueco de unión entre ellos. */
+function rebase(pieces: Piece[]): Piece[] {
+  let len = 0;
+  return pieces.map((p, i) => {
+    const joined = i ? len + JOIN_GAP : 0;
+    len = joined + (p.end - p.start);
+    return { ...p, joined };
+  });
+}
+
+/** Salida degenerada de Whisper: muchas palabras casi todas iguales («J.J J.J J.J…»). */
+function degenerate(words: Word[]): boolean {
+  const tokens = words.flatMap((w) => w.text.toLowerCase().match(/\p{L}+/gu) ?? []);
+  return tokens.length >= 8 && new Set(tokens).size / tokens.length < 0.35;
+}
+
+/**
+ * Transcribe una parte con tiempos por palabra. Si la salida es degenerada (un trozo de música
+ * arrastra a Whisper a un bucle que arruina también las frases reales de la parte), la parte se
+ * divide por sus tramos y se reintenta; un tramo suelto que sigue degenerado se descarta.
+ * Es la misma idea que el reintento de Whisper ante una «compression ratio» alta.
+ */
+async function transcribeWindow(
+  asr: AutomaticSpeechRecognitionPipeline,
+  req: CaptionRequest,
+  pieces: Piece[],
+  voice: [number, number][],
+  solo = false,
+): Promise<Word[]> {
+  const out = await asr(joinAudio(req.audio, pieces), {
+    return_timestamps: "word",
+    // Sin `no_repeat_ngram_size`: medido, en vez de cortar un bucle lo convertía en variantes
+    // («J.J.», «J.J», «J.J J.J»…) que ocupaban toda la parte y borraban las frases reales.
+    // Tope de seguridad: 28 s de habla rápida rondan los 150 tokens.
+    max_new_tokens: 224,
+    ...(req.language ? { language: req.language, task: "transcribe" } : {}),
+  } as never);
+  const result = Array.isArray(out) ? out[0] : out;
+  const words: Word[] = [];
+  for (const c of (result.chunks ?? []) as { timestamp: [number, number | null]; text: string }[]) {
+    const text = c.text.trim();
+    // Fragmentos sin letras ni números («...», «-») no son palabras dichas.
+    if (!/[\p{L}\p{N}]/u.test(text)) continue;
+    const a = toOriginal(c.timestamp[0], pieces);
+    const b = toOriginal(c.timestamp[1] ?? c.timestamp[0] + 0.3, pieces);
+    // Las palabras del contexto ya se transcribieron en la parte anterior.
+    if (a.piece.context) continue;
+    words.push({ start: a.time, end: Math.max(b.time, a.time + 0.05), text, piece: a.piece });
+  }
+  if (!degenerate(words)) {
+    if (solo) return words;
+    // Cobertura: un tramo con voz clara sin ninguna palabra (Whisper dio el texto por terminado
+    // tras la música) se vuelve a transcribir solo.
+    const voiced = (p: Piece) => voice.reduce((t, [a, b]) => t + Math.max(0, Math.min(b, p.end) - Math.max(a, p.start)), 0);
+    const missing = pieces.filter((p) => !p.context && voiced(p) >= 0.8 && !words.some((w) => w.start >= p.start - 0.1 && w.start <= p.end + 0.1));
+    for (const p of missing) words.push(...(await transcribeWindow(asr, req, rebase([p]), voice, true)));
+    return words.sort((a, b) => a.start - b.start);
+  }
+  const context = pieces.filter((p) => p.context);
+  const own = pieces.filter((p) => !p.context);
+  let halves: [Piece[], Piece[]];
+  if (own.length > 1) {
+    const half = Math.ceil(own.length / 2);
+    halves = [own.slice(0, half), own.slice(half)];
+  } else {
+    // Un tramo largo que mezcla voz y música se parte por su punto más silencioso.
+    const p = own[0];
+    if (!p || p.end - p.start < MIN_RETRY) return [];
+    const cut = quietestPoint(req.audio, p.start + (p.end - p.start) * 0.3, p.start + (p.end - p.start) * 0.7);
+    halves = [[{ ...p, end: cut }], [{ ...p, start: cut }]];
+  }
+  // Cada mitad conserva contexto: la primera el de la parte, la segunda el final de la primera.
+  return [
+    ...(await transcribeWindow(asr, req, rebase([...context, ...halves[0]]), voice, solo)),
+    ...(await transcribeWindow(asr, req, withContext(halves[0], halves[1]), voice, solo)),
+  ];
+}
+
+/** Por debajo de esto, un tramo que sigue saliendo degenerado se descarta (es música o ruido). */
+const MIN_RETRY = 6;
+
+/** Instante de menor energía (en ventanas de 20 ms) entre `from` y `to`, en segundos. */
+function quietestPoint(audio: Float32Array, from: number, to: number): number {
+  const frame = RATE / 50;
+  let best = (from + to) / 2;
+  let bestEnergy = Infinity;
+  for (let i = Math.floor(from * RATE); i + frame <= to * RATE; i += frame) {
+    let e = 0;
+    for (let j = i; j < i + frame; j++) e += audio[j] * audio[j];
+    if (e < bestEnergy) {
+      bestEnergy = e;
+      best = (i + frame / 2) / RATE;
+    }
+  }
+  return best;
+}
+
 async function transcribe(req: CaptionRequest, device: Device): Promise<number> {
   const duration = req.audio.length / RATE;
   post({ type: "progress", stage: "Detectando dónde se habla", fraction: null });
@@ -330,23 +456,8 @@ async function transcribe(req: CaptionRequest, device: Device): Promise<number> 
   for (let i = 0; i < windows.length; i++) {
     post({ type: "progress", stage: `Escuchando parte ${i + 1} de ${windows.length} · ${found} frases`, fraction: i / windows.length });
     const pieces = windows[i];
-    const out = await asr(joinAudio(req.audio, pieces), {
-      return_timestamps: "word",
-      // Tope por parte: 28 s de habla rápida rondan los 150 tokens; evita bucles interminables.
-      max_new_tokens: 224,
-      ...(req.language ? { language: req.language, task: "transcribe" } : {}),
-    } as never);
-    const result = Array.isArray(out) ? out[0] : out;
-    const words: Word[] = [];
-    for (const c of (result.chunks ?? []) as { timestamp: [number, number | null]; text: string }[]) {
-      const text = c.text.trim();
-      // Fragmentos sin letras ni números («...», «-») no son palabras dichas.
-      if (!/[\p{L}\p{N}]/u.test(text)) continue;
-      const a = toOriginal(c.timestamp[0], pieces);
-      const b = toOriginal(c.timestamp[1] ?? c.timestamp[0] + 0.3, pieces);
-      words.push({ start: a.time, end: Math.max(b.time, a.time + 0.05), text, piece: a.piece });
-    }
-    const lines = snapLines(buildLines(words, req.maxChars), voice, prevEnd);
+    const words = await transcribeWindow(asr, req, withContext(windows[i - 1], pieces), voice);
+    const lines = snapLines(buildLines(words, req.maxChars).filter(isSpoken), voice, prevEnd);
     if (lines.length) prevEnd = lines.at(-1)!.end;
     found += lines.length;
     const until = pieces.at(-1)!.end;
