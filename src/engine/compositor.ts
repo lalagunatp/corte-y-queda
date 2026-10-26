@@ -1,7 +1,9 @@
+import type { VideoSample } from "mediabunny";
 import type { Clip, MediaClip, Project, TextClip } from "../types";
 import { fadeFactor, isActive } from "../util";
 
-export type FrameSource = HTMLVideoElement | HTMLImageElement;
+/** Imagen de un clip: elemento del navegador (vista previa) o fotograma decodificado (exportación). */
+export type FrameSource = HTMLVideoElement | HTMLImageElement | VideoSample;
 
 /** Clips visibles en t, en orden de dibujo (de abajo arriba). */
 export function visibleClips(p: Project, t: number): Clip[] {
@@ -19,7 +21,10 @@ export function visibleClips(p: Project, t: number): Clip[] {
 export const sourceTime = (c: MediaClip, t: number) => c.inPoint + (t - c.start) * c.speed;
 
 function sourceSize(s: FrameSource): [number, number] {
-  return s instanceof HTMLVideoElement ? [s.videoWidth, s.videoHeight] : [s.naturalWidth, s.naturalHeight];
+  if (s instanceof HTMLVideoElement) return [s.videoWidth, s.videoHeight];
+  if (s instanceof HTMLImageElement) return [s.naturalWidth, s.naturalHeight];
+  // Tamaño ya girado según los metadatos del video (p. ej. grabaciones de celular).
+  return [s.displayWidth, s.displayHeight];
 }
 
 function drawMedia(ctx: CanvasRenderingContext2D, p: Project, c: MediaClip, src: FrameSource, t: number) {
@@ -33,7 +38,8 @@ function drawMedia(ctx: CanvasRenderingContext2D, p: Project, c: MediaClip, src:
   ctx.filter = `brightness(${c.brightness}) contrast(${c.contrast}) saturate(${c.saturation})`;
   ctx.translate(p.width / 2 + (c.x * p.width) / 2, p.height / 2 + (c.y * p.height) / 2);
   if (c.rotation) ctx.rotate((c.rotation * Math.PI) / 180);
-  ctx.drawImage(src, -w / 2, -h / 2, w, h);
+  if (src instanceof HTMLVideoElement || src instanceof HTMLImageElement) ctx.drawImage(src, -w / 2, -h / 2, w, h);
+  else src.draw(ctx, -w / 2, -h / 2, w, h);
   ctx.restore();
 }
 
