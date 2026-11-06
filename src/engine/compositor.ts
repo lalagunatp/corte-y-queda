@@ -1,5 +1,6 @@
 import type { VideoSample } from "mediabunny";
 import type { Clip, MediaClip, Project, TextClip } from "../types";
+import { applyCase, cssFont, isClear } from "../text";
 import { fadeFactor, isActive } from "../util";
 
 /** Imagen de un clip: elemento del navegador (vista previa) o fotograma decodificado (exportación). */
@@ -67,36 +68,109 @@ function wrap(ctx: CanvasRenderingContext2D, text: string, maxWidth: number): st
   return out;
 }
 
-function drawText(ctx: CanvasRenderingContext2D, p: Project, c: TextClip, t: number): Rect {
+const requested = new Set<string>();
+
+/** Si la fuente aún no está cargada, la pide; el siguiente fotograma ya la usa. */
+function ensureFont(font: string, sample: string) {
+  if (typeof document === "undefined" || !document.fonts || requested.has(font)) return;
+  if (document.fonts.check(font, sample)) return;
+  requested.add(font);
+  void document.fonts.load(font, sample).finally(() => requested.delete(font));
+}
+
+function boxPath(ctx: CanvasRenderingContext2D, r: Rect, radius: number) {
+  ctx.beginPath();
+  const rr = Math.min(r.w, r.h) / 2 * Math.min(1, Math.max(0, radius));
+  if (rr > 0 && ctx.roundRect) ctx.roundRect(r.x, r.y, r.w, r.h, rr);
+  else ctx.rect(r.x, r.y, r.w, r.h);
+}
+
+/** Dibuja un texto (o subtítulo); se usa también para las miniaturas de estilos. */
+export function drawText(ctx: CanvasRenderingContext2D, p: Pick<Project, "width" | "height">, c: TextClip, t: number): Rect {
   ctx.save();
-  ctx.globalAlpha = fadeFactor(c, t);
-  ctx.font = `${c.bold ? 700 : 500} ${c.fontSize}px "Segoe UI", Inter, system-ui, sans-serif`;
-  ctx.textAlign = "center";
+  ctx.globalAlpha = fadeFactor(c, t) * c.opacity;
+  const text = applyCase(c.text, c.textCase);
+  const font = cssFont(c);
+  ensureFont(font, text || "Aa");
+  ctx.font = font;
+  ctx.textAlign = "left";
   ctx.textBaseline = "middle";
+  const spacing = c.letterSpacing * c.fontSize;
+  const spaced = "letterSpacing" in ctx;
+  if (spaced) ctx.letterSpacing = `${spacing}px`;
+  // El espaciado se suma también tras la última letra; se descuenta para que el renglón quede centrado.
+  const measure = (l: string) => Math.max(0, ctx.measureText(l).width - (spaced && l ? spacing : 0));
   const margin = Math.min(p.width, p.height) * 0.05;
   // El texto salta de línea antes de salirse del encuadre (clave en formato vertical).
-  const lines = wrap(ctx, c.text, p.width - margin * 2);
-  const lineHeight = c.fontSize * 1.2;
-  const pad = c.fontSize * 0.3;
-  const blockH = lineHeight * lines.length + pad;
-  const width = Math.max(0, ...lines.map((l) => ctx.measureText(l).width));
+  const lines = wrap(ctx, text, p.width - margin * 2);
+  const widths = lines.map(measure);
+  const lineHeight = c.fontSize * c.lineHeight;
+  const padX = c.fontSize * c.bgPadding;
+  const padY = padX / 2;
+  const blockH = lineHeight * lines.length + padY * 2;
+  const width = Math.max(0, ...widths);
   const cx = Math.min(Math.max(p.width / 2 + (c.x * p.width) / 2, margin + width / 2), p.width - margin - width / 2);
   // El bloque entero se mantiene dentro del cuadro aunque tenga varias líneas.
   const wantedCy = p.height / 2 + (c.y * p.height) / 2;
   const cy = Math.min(Math.max(wantedCy, margin + blockH / 2), p.height - margin - blockH / 2);
-  const top = cy - (lineHeight * (lines.length - 1)) / 2;
-  const box: Rect = { x: cx - width / 2 - pad, y: cy - blockH / 2, w: width + pad * 2, h: blockH };
-  const hasBg = !/^#[0-9a-f]{6}00$/i.test(c.background);
-  if (hasBg) {
+  const box: Rect = { x: cx - width / 2 - padX, y: cy - blockH / 2, w: width + padX * 2, h: blockH };
+
+  ctx.translate(cx, cy);
+  if (c.rotation) ctx.rotate((c.rotation * Math.PI) / 180);
+  const top = -blockH / 2 + padY + lineHeight / 2;
+  const lineX = (w: number) => (c.align === "left" ? -width / 2 : c.align === "right" ? width / 2 - w : -w / 2);
+
+  if (!isClear(c.background)) {
     ctx.fillStyle = c.background;
-    ctx.fillRect(box.x, box.y, box.w, box.h);
-  } else {
-    // Sombra suave para que el texto se lea sobre cualquier fondo.
-    ctx.shadowColor = "rgba(0,0,0,0.6)";
-    ctx.shadowBlur = c.fontSize * 0.12;
+    if (c.bgShape === "lines") {
+      lines.forEach((l, i) => {
+        if (!l) return;
+        boxPath(ctx, { x: lineX(widths[i]) - padX, y: top + i * lineHeight - lineHeight / 2 - padY / 2, w: widths[i] + padX * 2, h: lineHeight + padY }, c.bgRadius);
+        ctx.fill();
+      });
+    } else {
+      boxPath(ctx, { x: -width / 2 - padX, y: -blockH / 2, w: width + padX * 2, h: blockH }, c.bgRadius);
+      ctx.fill();
+    }
   }
-  ctx.fillStyle = c.color;
-  lines.forEach((l, i) => ctx.fillText(l, cx, top + i * lineHeight));
+
+  let fill: string | CanvasGradient = c.color;
+  if (c.gradient) {
+    const g = ctx.createLinearGradient(0, top - c.fontSize / 2, 0, top + (lines.length - 1) * lineHeight + c.fontSize / 2);
+    g.addColorStop(0, c.color);
+    g.addColorStop(1, c.gradient);
+    fill = g;
+  }
+  const shadow = !isClear(c.shadowColor);
+  const setShadow = (on: boolean) => {
+    ctx.shadowColor = on ? c.shadowColor : "transparent";
+    ctx.shadowBlur = on ? c.shadowBlur * c.fontSize : 0;
+    ctx.shadowOffsetX = on ? c.shadowX * c.fontSize : 0;
+    ctx.shadowOffsetY = on ? c.shadowY * c.fontSize : 0;
+  };
+  const decorate = (x: number, y: number, w: number) => {
+    if (c.decoration === "none" || !w) return;
+    const h = Math.max(1, c.fontSize * 0.06);
+    ctx.fillRect(x, y + (c.decoration === "underline" ? c.fontSize * 0.42 : 0) - h / 2, w, h);
+  };
+  const stroke = c.strokeWidth > 0;
+  if (stroke) {
+    // El contorno va debajo del relleno, así solo se ve la mitad exterior.
+    setShadow(shadow);
+    ctx.strokeStyle = c.strokeColor;
+    ctx.lineWidth = c.strokeWidth * c.fontSize * 2;
+    ctx.lineJoin = "round";
+    ctx.miterLimit = 2;
+    lines.forEach((l, i) => ctx.strokeText(l, lineX(widths[i]), top + i * lineHeight));
+  }
+  setShadow(shadow && !stroke);
+  ctx.fillStyle = fill;
+  lines.forEach((l, i) => {
+    const x = lineX(widths[i]);
+    const y = top + i * lineHeight;
+    ctx.fillText(l, x, y);
+    decorate(x, y, widths[i]);
+  });
   ctx.restore();
   return box;
 }

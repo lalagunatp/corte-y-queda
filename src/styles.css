@@ -171,6 +171,20 @@ p { margin: 6px 0; line-height: 1.45; }
 .swatch.on { box-shadow: 0 0 0 2px var(--bg), 0 0 0 4px var(--accent); }
 @media (pointer: coarse) { .swatch { width: 34px; height: 34px; } }
 
+.style-presets { display: grid; grid-template-columns: repeat(auto-fill, minmax(92px, 1fr)); gap: 8px; }
+.style-preset { flex-direction: column; padding: 0; gap: 4px; font-size: 0.82em; background: transparent; color: var(--muted); }
+.style-preset:hover:not(:disabled) { background: transparent; color: var(--text); }
+.style-thumb { display: block; width: 100%; aspect-ratio: 220/96; border-radius: 8px; background: linear-gradient(135deg, #3d6fd8, #d8a24a 60%, #2f9a6b); box-shadow: 0 0 0 1.5px transparent; }
+.style-preset.on { color: var(--text); }
+.style-preset.on .style-thumb { box-shadow: 0 0 0 2px var(--accent); }
+
+.font-list { display: grid; gap: 10px; max-height: 260px; overflow-y: auto; padding-right: 4px; }
+.font-cat { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 4px; }
+.font-cat > small { grid-column: 1 / -1; color: var(--muted); font-size: 0.78em; text-transform: uppercase; letter-spacing: 0.04em; }
+.font-option { justify-content: flex-start; background: var(--surface-2); font-size: 1.05em; padding: 6px 10px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; border: 1px solid transparent; }
+.font-option.on { border-color: var(--accent); background: var(--accent-soft); }
+.gen .font-option { background: var(--bg); }
+
 .toggle { justify-content: space-between; width: 100%; background: transparent; padding: 4px 0; color: var(--text); }
 .toggle:hover:not(:disabled) { background: transparent; }
 .toggle .knob { flex: none; width: 34px; height: 20px; border-radius: 999px; background: #383b42; position: relative; transition: background 0.15s; }

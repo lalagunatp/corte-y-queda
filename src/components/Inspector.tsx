@@ -2,52 +2,8 @@ import { useEditor } from "../store";
 import type { MediaClip, TextClip } from "../types";
 import { useUi } from "../ui";
 import { Icon } from "./Icon";
-
-function Slider(props: { label: string; value: number; min: number; max: number; step: number; unit?: string; onChange(v: number): void }) {
-  const begin = useEditor((s) => s.beginGesture);
-  const end = useEditor((s) => s.endGesture);
-  return (
-    <label className="field">
-      <span>{props.label}</span>
-      <input
-        type="range"
-        min={props.min}
-        max={props.max}
-        step={props.step}
-        value={props.value}
-        onPointerDown={begin}
-        onPointerUp={end}
-        onPointerCancel={end}
-        onChange={(e) => props.onChange(Number(e.target.value))}
-      />
-      <output>
-        {Number(props.value.toFixed(2))}
-        {props.unit}
-      </output>
-    </label>
-  );
-}
-
-function Segmented<T extends string | number>(props: { options: { value: T; label: string }[]; value: T | null; onPick(v: T): void }) {
-  return (
-    <div className="segmented">
-      {props.options.map((o) => (
-        <button key={String(o.value)} className={props.value === o.value ? "on" : ""} onClick={() => props.onPick(o.value)}>
-          {o.label}
-        </button>
-      ))}
-    </div>
-  );
-}
-
-function Toggle({ on, label, onChange }: { on: boolean; label: string; onChange(v: boolean): void }) {
-  return (
-    <button className={`toggle ${on ? "on" : ""}`} onClick={() => onChange(!on)} role="switch" aria-checked={on}>
-      <span>{label}</span>
-      <span className="knob" />
-    </button>
-  );
-}
+import { Segmented, Slider, Toggle } from "./controls";
+import { TextStyleEditor, sampleOf } from "./TextStyleEditor";
 
 const FILTERS = [
   { name: "Original", brightness: 1, contrast: 1, saturation: 1 },
@@ -223,12 +179,9 @@ function MediaInspector({ clip }: { clip: MediaClip }) {
   );
 }
 
-const TEXT_COLORS = ["#ffffff", "#111111", "#facc15", "#f87171", "#60a5fa", "#4ade80", "#f472b6", "#fb923c"];
-
 function TextInspector({ clip }: { clip: TextClip }) {
   const update = useEditor((s) => s.updateClip);
   const u = (patch: Partial<TextClip>) => update(clip.id, patch);
-  const bgOn = !/^#[0-9a-f]{6}00$/i.test(clip.background);
   const isSubtitle = useEditor((s) => s.project.tracks.find((t) => t.id === clip.trackId)?.role === "subtitles");
   const openSubtitles = useUi((s) => s.openSubtitles);
   return (
@@ -253,18 +206,10 @@ function TextInspector({ clip }: { clip: TextClip }) {
             { value: 48, label: "S" },
             { value: 80, label: "M" },
             { value: 130, label: "L" },
+            { value: 200, label: "XL" },
           ]}
         />
-      </section>
-      <section className="group">
-        <h4>Color</h4>
-        <div className="swatches">
-          {TEXT_COLORS.map((c) => (
-            <button key={c} className={`swatch ${clip.color === c ? "on" : ""}`} style={{ background: c }} onClick={() => u({ color: c })} aria-label={`Color ${c}`} />
-          ))}
-        </div>
-        <Toggle on={bgOn} label="Fondo" onChange={(v) => u({ background: v ? "#000000aa" : "#00000000" })} />
-        <Toggle on={clip.bold} label="Negrita" onChange={(bold) => u({ bold })} />
+        <Slider label="Exacto" value={clip.fontSize} min={12} max={300} step={1} unit="px" onChange={(v) => u({ fontSize: v })} />
       </section>
       <section className="group">
         <h4>Posición</h4>
@@ -278,6 +223,7 @@ function TextInspector({ clip }: { clip: TextClip }) {
           ]}
         />
       </section>
+      <TextStyleEditor value={clip} onChange={u} sample={sampleOf(clip.text)} />
       <section className="group">
         <h4>Transiciones</h4>
         <Toggle on={clip.fadeIn > 0} label="Fundido de entrada" onChange={(v) => u({ fadeIn: v ? Math.min(FADE, clip.duration / 2) : 0 })} />
@@ -286,17 +232,6 @@ function TextInspector({ clip }: { clip: TextClip }) {
       </section>
       <details className="group">
         <summary>Avanzado</summary>
-        <Slider label="Tamaño" value={clip.fontSize} min={12} max={300} step={1} unit="px" onChange={(v) => u({ fontSize: v })} />
-        <label className="field">
-          <span>Color</span>
-          <input type="color" value={clip.color} onChange={(e) => u({ color: e.target.value })} />
-        </label>
-        {bgOn && (
-          <label className="field">
-            <span>Fondo</span>
-            <input type="color" value={clip.background.slice(0, 7)} onChange={(e) => u({ background: `${e.target.value}aa` })} />
-          </label>
-        )}
         <Slider label="Posición X" value={clip.x} min={-1} max={1} step={0.01} onChange={(v) => u({ x: v })} />
         <Slider label="Posición Y" value={clip.y} min={-1} max={1} step={0.01} onChange={(v) => u({ y: v })} />
       </details>

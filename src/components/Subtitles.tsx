@@ -7,6 +7,8 @@ import type { MediaClip, TextClip } from "../types";
 import { COMPACT_QUERY, useUi } from "../ui";
 import { clipEnd } from "../util";
 import { Icon } from "./Icon";
+import { Segmented, Slider } from "./controls";
+import { TextStyleEditor } from "./TextStyleEditor";
 import { engineRef } from "./Preview";
 
 const LANGUAGES: [string, string][] = [
@@ -19,7 +21,6 @@ const LANGUAGES: [string, string][] = [
   ["", "Detectar automáticamente"],
 ];
 
-const COLORS = ["#ffffff", "#facc15", "#60a5fa", "#4ade80", "#f472b6", "#111111"];
 const MIN_LINE = 0.2;
 
 /** Campo de tiempo editable (mm:ss.d) que solo confirma valores válidos al salir del campo. */
@@ -255,42 +256,36 @@ function Style({ lines }: { lines: TextClip[] }) {
   const style = lines[0] ? subtitleStyleOf(lines[0]) : DEFAULT_SUBTITLE_STYLE;
   const ids = lines.map((l) => l.id);
   const apply = (patch: Partial<TextClip>) => updateClips(ids, patch);
-  const bgOn = !/^#[0-9a-f]{6}00$/i.test(style.background);
-  const seg = <T extends number>(value: T, options: [T, string][], pick: (v: T) => void) => (
-    <div className="segmented">
-      {options.map(([v, l]) => (
-        <button key={v} className={value === v ? "on" : ""} onClick={() => pick(v)}>
-          {l}
-        </button>
-      ))}
-    </div>
-  );
   return (
     <div className="gen">
-      <div className="stack">
-        <span>Tamaño</span>
-        {seg(style.fontSize, [[40, "S"], [56, "M"], [76, "L"]], (fontSize) => apply({ fontSize }))}
-      </div>
-      <div className="stack">
-        <span>Posición</span>
-        {seg(style.y, [[-0.72, "Arriba"], [0, "Centro"], [0.72, "Abajo"]], (y) => apply({ y, x: 0 }))}
-      </div>
-      <div className="stack">
-        <span>Color</span>
-        <div className="swatches">
-          {COLORS.map((c) => (
-            <button key={c} className={`swatch ${style.color === c ? "on" : ""}`} style={{ background: c }} onClick={() => apply({ color: c })} aria-label={`Color ${c}`} />
-          ))}
-        </div>
-      </div>
-      <button className={`toggle ${bgOn ? "on" : ""}`} role="switch" aria-checked={bgOn} onClick={() => apply({ background: bgOn ? "#00000000" : "#000000aa" })}>
-        <span>Fondo</span>
-        <span className="knob" />
-      </button>
-      <button className={`toggle ${style.bold ? "on" : ""}`} role="switch" aria-checked={style.bold} onClick={() => apply({ bold: !style.bold })}>
-        <span>Negrita</span>
-        <span className="knob" />
-      </button>
+      <section className="group">
+        <h4>Tamaño</h4>
+        <Segmented
+          value={style.fontSize}
+          onPick={(fontSize) => apply({ fontSize })}
+          options={[
+            { value: 40, label: "S" },
+            { value: 56, label: "M" },
+            { value: 76, label: "L" },
+            { value: 100, label: "XL" },
+          ]}
+        />
+        <Slider label="Exacto" value={style.fontSize} min={16} max={200} step={1} unit="px" onChange={(fontSize) => apply({ fontSize })} />
+      </section>
+      <section className="group">
+        <h4>Posición</h4>
+        <Segmented
+          value={style.y}
+          onPick={(y) => apply({ y, x: 0 })}
+          options={[
+            { value: -0.72, label: "Arriba" },
+            { value: 0, label: "Centro" },
+            { value: 0.72, label: "Abajo" },
+          ]}
+        />
+        <Slider label="Altura" value={style.y} min={-1} max={1} step={0.01} onChange={(y) => apply({ y, x: 0 })} />
+      </section>
+      <TextStyleEditor value={style} onChange={apply} sample="Hola" />
     </div>
   );
 }

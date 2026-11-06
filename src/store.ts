@@ -1,22 +1,23 @@
 import { create } from "zustand";
-import type { Clip, MediaAsset, MediaClip, Project, SubtitleLine, TextClip, Track, TrackKind } from "./types";
+import { DEFAULT_TEXT_STYLE, normalizeText, pickStyle } from "./text";
+import type { Clip, MediaAsset, MediaClip, Project, SubtitleLine, TextClip, TextStyle, Track, TrackKind } from "./types";
 import { clipEnd, projectDuration, uid } from "./util";
 
 type Snapshot = Pick<Project, "tracks" | "clips" | "width" | "height" | "fps" | "background" | "name">;
 
 const HISTORY_LIMIT = 200;
 
-export type SubtitleStyle = Pick<TextClip, "fontSize" | "color" | "background" | "bold" | "y">;
+export type SubtitleStyle = TextStyle & Pick<TextClip, "y">;
 
-export const DEFAULT_SUBTITLE_STYLE: SubtitleStyle = { fontSize: 56, color: "#ffffff", background: "#000000aa", bold: true, y: 0.72 };
+export const DEFAULT_SUBTITLE_STYLE: SubtitleStyle = {
+  ...DEFAULT_TEXT_STYLE,
+  fontSize: 56,
+  background: "#000000aa",
+  shadowColor: "#00000000",
+  y: 0.72,
+};
 
-export const subtitleStyleOf = (c: TextClip): SubtitleStyle => ({
-  fontSize: c.fontSize,
-  color: c.color,
-  background: c.background,
-  bold: c.bold,
-  y: c.y,
-});
+export const subtitleStyleOf = (c: TextClip): SubtitleStyle => ({ ...pickStyle(c), y: c.y });
 
 /** Clips de la pista de subtítulos, ordenados por inicio. */
 export function subtitleClips(p: Project): TextClip[] {
@@ -108,7 +109,15 @@ export const useEditor = create<EditorState>((set, get) => ({
   status: null,
 
   setStatus: (status) => set({ status }),
-  loadProject: (project) => set({ project, past: [], future: [], selected: [], time: 0, playing: false }),
+  loadProject: (project) =>
+    set({
+      project: { ...project, clips: project.clips.map((c) => (c.type === "text" ? normalizeText(c) : c)) },
+      past: [],
+      future: [],
+      selected: [],
+      time: 0,
+      playing: false,
+    }),
   setTime: (t) => set({ time: Math.max(0, t) }),
   setPlaying: (playing) => set({ playing }),
   setZoom: (z) => set({ zoom: Math.min(400, Math.max(8, z)) }),
@@ -229,11 +238,8 @@ export const useEditor = create<EditorState>((set, get) => ({
       duration: 3,
       fadeIn: 0,
       fadeOut: 0,
+      ...DEFAULT_TEXT_STYLE,
       text,
-      fontSize: 72,
-      color: "#ffffff",
-      background: "#00000000",
-      bold: true,
       x: 0,
       y: 0,
     };
