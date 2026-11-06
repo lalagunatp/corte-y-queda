@@ -65,13 +65,46 @@ export interface MediaClip extends ClipBase, Transform {
   voiceClean: boolean;
 }
 
-export interface TextClip extends ClipBase {
+export interface TextStyle {
+  /** Id de la fuente (ver FONTS en text.ts). */
+  font: string;
+  fontSize: number;
+  weight: number;
+  italic: boolean;
+  decoration: "none" | "underline" | "strike";
+  textCase: "none" | "upper" | "lower" | "title";
+  align: "left" | "center" | "right";
+  /** Espacio extra entre letras, en fracción del tamaño. */
+  letterSpacing: number;
+  /** Alto de línea, en múltiplos del tamaño. */
+  lineHeight: number;
+  color: string;
+  /** Segundo color para un degradado vertical; null = color liso. */
+  gradient: string | null;
+  strokeColor: string;
+  /** Grosor del contorno en fracción del tamaño; 0 = sin contorno. */
+  strokeWidth: number;
+  /** #rrggbbaa; con alfa 00 no hay sombra. */
+  shadowColor: string;
+  /** Desenfoque y desplazamiento de la sombra, en fracción del tamaño. */
+  shadowBlur: number;
+  shadowX: number;
+  shadowY: number;
+  /** #rrggbbaa; con alfa 00 no hay fondo. */
+  background: string;
+  /** Un recuadro para todo el bloque o uno por renglón. */
+  bgShape: "block" | "lines";
+  /** Relleno del fondo en fracción del tamaño. */
+  bgPadding: number;
+  /** Redondeo del fondo, 0..1 (1 = píldora). */
+  bgRadius: number;
+  opacity: number;
+  rotation: number;
+}
+
+export interface TextClip extends ClipBase, TextStyle {
   type: "text";
   text: string;
-  fontSize: number;
-  color: string;
-  background: string;
-  bold: boolean;
   x: number;
   y: number;
 }

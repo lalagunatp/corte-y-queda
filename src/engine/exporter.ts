@@ -1,7 +1,8 @@
 import { ALL_FORMATS, BlobSource, Input, type VideoSample, VideoSampleSink } from "mediabunny";
 import { ArrayBufferTarget, Muxer } from "mp4-muxer";
 import { assetBlob, assetUrl } from "../media";
-import type { MediaClip, Project } from "../types";
+import { loadFonts } from "../text";
+import type { MediaClip, Project, TextClip } from "../types";
 import { isActive, projectDuration } from "../util";
 import { MIX_RATE, mixProjectAudio } from "./audioMix";
 import { type FrameSource, drawFrame, sourceTime } from "./compositor";
@@ -193,6 +194,8 @@ export async function exportMp4(p: Project, opts: ExportOptions): Promise<Export
   canvas.width = width;
   canvas.height = height;
   const ctx = canvas.getContext("2d")!;
+  // Sin esto, los primeros fotogramas saldrían con la fuente de reserva.
+  await loadFonts(p.clips.filter((c): c is TextClip => c.type === "text"));
   const assets = new Map(p.assets.map((a) => [a.id, a]));
   const inputs = new Map<string, Promise<Input>>();
   const readers = new Map<string, Promise<ClipFrames | null>>();
