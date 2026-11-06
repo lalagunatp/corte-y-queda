@@ -11,7 +11,7 @@ const FILTERS = [
   { name: "Vivo", brightness: 1.05, contrast: 1.15, saturation: 1.6 },
   { name: "Suave", brightness: 1.08, contrast: 0.88, saturation: 0.85 },
   { name: "Contraste", brightness: 0.85, contrast: 1.35, saturation: 1.1 },
-  { name: "B/N", brightness: 1, contrast: 1.15, saturation: 0 },
+  { name: "Blanco y negro", brightness: 1, contrast: 1.15, saturation: 0 },
 ];
 
 const FADE = 0.6;
@@ -26,7 +26,7 @@ function DeleteButton({ id }: { id: string }) {
         useUi.getState().setSheet(null);
       }}
     >
-      <Icon name="trash" /> Eliminar clip
+      <Icon name="trash" /> Borrar este clip
     </button>
   );
 }
@@ -36,8 +36,8 @@ function Captions({ clip }: { clip: MediaClip }) {
   return (
     <section className="group">
       <h4>Subtítulos</h4>
-      <button onClick={() => open(clip.id)}>
-        <Icon name="sparkles" /> Generar subtítulos de este clip
+      <button onClick={() => open(clip.id)} title="La app escucha lo que se dice y lo escribe sola">
+        <Icon name="sparkles" /> Crear subtítulos de este clip
       </button>
     </section>
   );
@@ -93,10 +93,10 @@ function MediaInspector({ clip }: { clip: MediaClip }) {
             value={[0.5, 1, 1.5, 2].includes(clip.speed) ? clip.speed : null}
             onPick={setSpeed}
             options={[
-              { value: 0.5, label: "0.5×" },
-              { value: 1, label: "1×" },
-              { value: 1.5, label: "1.5×" },
-              { value: 2, label: "2×" },
+              { value: 0.5, label: "Lenta" },
+              { value: 1, label: "Normal" },
+              { value: 1.5, label: "Rápida" },
+              { value: 2, label: "Doble" },
             ]}
           />
         </section>
@@ -104,7 +104,7 @@ function MediaInspector({ clip }: { clip: MediaClip }) {
 
       {audible && (
         <section className="group">
-          <h4>Audio</h4>
+          <h4>Sonido</h4>
           <div className="inline">
             <button className="ghost square" onClick={() => u({ volume: clip.volume === 0 ? 1 : 0 })} aria-label={clip.volume === 0 ? "Activar sonido" : "Silenciar"}>
               <Icon name={clip.volume === 0 ? "mute" : "volume"} />
@@ -122,27 +122,27 @@ function MediaInspector({ clip }: { clip: MediaClip }) {
             />
             <output className="muted small">{Math.round(clip.volume * 100)}%</output>
           </div>
-          <Toggle on={clip.voiceClean} label="Mejorar voz" onChange={(v) => u({ voiceClean: v })} />
+          <Toggle on={clip.voiceClean} label="Mejorar la voz (menos ruido)" onChange={(v) => u({ voiceClean: v })} />
         </section>
       )}
 
       <section className="group">
-        <h4>Transiciones</h4>
-        <Toggle on={clip.fadeIn > 0} label="Fundido de entrada" onChange={(v) => u({ fadeIn: v ? Math.min(FADE, clip.duration / 2) : 0 })} />
-        <Toggle on={clip.fadeOut > 0} label="Fundido de salida" onChange={(v) => u({ fadeOut: v ? Math.min(FADE, clip.duration / 2) : 0 })} />
+        <h4>Aparecer y desaparecer</h4>
+        <Toggle on={clip.fadeIn > 0} label="Aparecer poco a poco" onChange={(v) => u({ fadeIn: v ? Math.min(FADE, clip.duration / 2) : 0 })} />
+        <Toggle on={clip.fadeOut > 0} label="Desaparecer poco a poco" onChange={(v) => u({ fadeOut: v ? Math.min(FADE, clip.duration / 2) : 0 })} />
       </section>
 
       {visual && (
         <section className="group">
-          <h4>Encuadre</h4>
+          <h4>Girar y hacer zoom</h4>
           <div className="inline">
-            <button onClick={() => u({ rotation: (clip.rotation + 90) % 360 })} title="Girar 90°">
+            <button onClick={() => u({ rotation: (clip.rotation + 90) % 360 })} title="Girar un cuarto de vuelta">
               <Icon name="rotate" /> Girar
             </button>
-            <button className="square" onClick={() => u({ scale: Math.max(0.2, clip.scale / 1.15) })} aria-label="Alejar">
+            <button className="square" onClick={() => u({ scale: Math.max(0.2, clip.scale / 1.15) })} aria-label="Alejar" title="Ver la imagen más pequeña">
               <Icon name="zoomOut" />
             </button>
-            <button className="square" onClick={() => u({ scale: Math.min(4, clip.scale * 1.15) })} aria-label="Acercar">
+            <button className="square" onClick={() => u({ scale: Math.min(4, clip.scale * 1.15) })} aria-label="Acercar" title="Ver la imagen más grande">
               <Icon name="zoomIn" />
             </button>
           </div>
@@ -155,20 +155,20 @@ function MediaInspector({ clip }: { clip: MediaClip }) {
         <summary>Avanzado</summary>
         <Slider label="Duración" value={clip.duration} min={0.1} max={Math.max(0.1, maxDuration)} step={0.05} unit="s" onChange={(v) => u({ duration: v })} />
         {asset?.kind !== "image" && <Slider label="Velocidad" value={clip.speed} min={0.25} max={4} step={0.05} unit="×" onChange={setSpeed} />}
-        <Slider label="Entrada" value={clip.fadeIn} min={0} max={Math.min(5, clip.duration)} step={0.05} unit="s" onChange={(v) => u({ fadeIn: v })} />
-        <Slider label="Salida" value={clip.fadeOut} min={0} max={Math.min(5, clip.duration)} step={0.05} unit="s" onChange={(v) => u({ fadeOut: v })} />
+        <Slider label="Aparecer" value={clip.fadeIn} min={0} max={Math.min(5, clip.duration)} step={0.05} unit="s" onChange={(v) => u({ fadeIn: v })} />
+        <Slider label="Desaparecer" value={clip.fadeOut} min={0} max={Math.min(5, clip.duration)} step={0.05} unit="s" onChange={(v) => u({ fadeOut: v })} />
         {visual && (
           <>
-            <Slider label="Escala" value={clip.scale} min={0.1} max={4} step={0.01} unit="×" onChange={(v) => u({ scale: v })} />
-            <Slider label="Posición X" value={clip.x} min={-2} max={2} step={0.01} onChange={(v) => u({ x: v })} />
-            <Slider label="Posición Y" value={clip.y} min={-2} max={2} step={0.01} onChange={(v) => u({ y: v })} />
-            <Slider label="Rotación" value={clip.rotation} min={-180} max={180} step={1} unit="°" onChange={(v) => u({ rotation: v })} />
+            <Slider label="Tamaño" value={clip.scale} min={0.1} max={4} step={0.01} unit="×" onChange={(v) => u({ scale: v })} />
+            <Slider label="Horizontal" value={clip.x} min={-2} max={2} step={0.01} onChange={(v) => u({ x: v })} />
+            <Slider label="Vertical" value={clip.y} min={-2} max={2} step={0.01} onChange={(v) => u({ y: v })} />
+            <Slider label="Giro" value={clip.rotation} min={-180} max={180} step={1} unit="°" onChange={(v) => u({ rotation: v })} />
             <Slider label="Opacidad" value={clip.opacity} min={0} max={1} step={0.01} onChange={(v) => u({ opacity: v })} />
             <Slider label="Brillo" value={clip.brightness} min={0} max={2} step={0.01} onChange={(v) => u({ brightness: v })} />
             <Slider label="Contraste" value={clip.contrast} min={0} max={2} step={0.01} onChange={(v) => u({ contrast: v })} />
             <Slider label="Saturación" value={clip.saturation} min={0} max={3} step={0.01} onChange={(v) => u({ saturation: v })} />
             <button onClick={() => u({ x: 0, y: 0, scale: 1, rotation: 0, opacity: 1, brightness: 1, contrast: 1, saturation: 1 })}>
-              Restablecer imagen
+              Dejar la imagen como al principio
             </button>
           </>
         )}
@@ -195,7 +195,7 @@ function TextInspector({ clip }: { clip: TextClip }) {
         </button>
       )}
       <section className="group">
-        <textarea value={clip.text} rows={2} onChange={(e) => u({ text: e.target.value })} autoFocus={clip.text === "Escribe aquí"} aria-label="Texto" />
+        <textarea value={clip.text} rows={2} onChange={(e) => u({ text: e.target.value })} autoFocus={clip.text === "Escribe aquí"} aria-label="Texto" placeholder="Escribe tu texto" />
       </section>
       <section className="group">
         <h4>Tamaño</h4>
@@ -203,13 +203,12 @@ function TextInspector({ clip }: { clip: TextClip }) {
           value={clip.fontSize}
           onPick={(fontSize) => u({ fontSize })}
           options={[
-            { value: 48, label: "S" },
-            { value: 80, label: "M" },
-            { value: 130, label: "L" },
-            { value: 200, label: "XL" },
+            { value: 48, label: "Chico" },
+            { value: 80, label: "Mediano" },
+            { value: 130, label: "Grande" },
+            { value: 200, label: "Enorme" },
           ]}
         />
-        <Slider label="Exacto" value={clip.fontSize} min={12} max={300} step={1} unit="px" onChange={(v) => u({ fontSize: v })} />
       </section>
       <section className="group">
         <h4>Posición</h4>
@@ -225,15 +224,16 @@ function TextInspector({ clip }: { clip: TextClip }) {
       </section>
       <TextStyleEditor value={clip} onChange={u} sample={sampleOf(clip.text)} />
       <section className="group">
-        <h4>Transiciones</h4>
-        <Toggle on={clip.fadeIn > 0} label="Fundido de entrada" onChange={(v) => u({ fadeIn: v ? Math.min(FADE, clip.duration / 2) : 0 })} />
-        <Toggle on={clip.fadeOut > 0} label="Fundido de salida" onChange={(v) => u({ fadeOut: v ? Math.min(FADE, clip.duration / 2) : 0 })} />
+        <h4>Aparecer y desaparecer</h4>
+        <Toggle on={clip.fadeIn > 0} label="Aparecer poco a poco" onChange={(v) => u({ fadeIn: v ? Math.min(FADE, clip.duration / 2) : 0 })} />
+        <Toggle on={clip.fadeOut > 0} label="Desaparecer poco a poco" onChange={(v) => u({ fadeOut: v ? Math.min(FADE, clip.duration / 2) : 0 })} />
         <Slider label="Duración" value={clip.duration} min={0.5} max={60} step={0.5} unit="s" onChange={(v) => u({ duration: v })} />
       </section>
       <details className="group">
         <summary>Avanzado</summary>
-        <Slider label="Posición X" value={clip.x} min={-1} max={1} step={0.01} onChange={(v) => u({ x: v })} />
-        <Slider label="Posición Y" value={clip.y} min={-1} max={1} step={0.01} onChange={(v) => u({ y: v })} />
+        <Slider label="Tamaño" value={clip.fontSize} min={12} max={300} step={1} unit="px" onChange={(v) => u({ fontSize: v })} />
+        <Slider label="Horizontal" value={clip.x} min={-1} max={1} step={0.01} onChange={(v) => u({ x: v })} />
+        <Slider label="Vertical" value={clip.y} min={-1} max={1} step={0.01} onChange={(v) => u({ y: v })} />
       </details>
       <DeleteButton id={clip.id} />
     </>
@@ -248,13 +248,15 @@ export function Inspector() {
     <>
       {!clip && (
         <div className="empty">
-          <p className="muted">Selecciona un clip en la línea de tiempo para editarlo.</p>
-          <button onClick={() => addText()}>
+          <p className="hint">
+            <Icon name="help" size={16} /> Toca un clip en la línea de tiempo (abajo) para cambiarlo: filtros, velocidad, sonido y más.
+          </p>
+          <button className="primary wide" onClick={() => addText()}>
             <Icon name="type" /> Añadir texto
           </button>
         </div>
       )}
-      {clip && selected.length > 1 && <p className="muted small">{selected.length} clips seleccionados · se muestra el primero</p>}
+      {clip && selected.length > 1 && <p className="muted small">{selected.length} clips elegidos · se muestra el primero</p>}
       {clip?.type === "media" && <MediaInspector clip={clip} />}
       {clip?.type === "text" && <TextInspector clip={clip} />}
     </>

@@ -264,13 +264,12 @@ function Style({ lines }: { lines: TextClip[] }) {
           value={style.fontSize}
           onPick={(fontSize) => apply({ fontSize })}
           options={[
-            { value: 40, label: "S" },
-            { value: 56, label: "M" },
-            { value: 76, label: "L" },
-            { value: 100, label: "XL" },
+            { value: 40, label: "Chico" },
+            { value: 56, label: "Mediano" },
+            { value: 76, label: "Grande" },
+            { value: 100, label: "Enorme" },
           ]}
         />
-        <Slider label="Exacto" value={style.fontSize} min={16} max={200} step={1} unit="px" onChange={(fontSize) => apply({ fontSize })} />
       </section>
       <section className="group">
         <h4>Posición</h4>
@@ -283,9 +282,13 @@ function Style({ lines }: { lines: TextClip[] }) {
             { value: 0.72, label: "Abajo" },
           ]}
         />
-        <Slider label="Altura" value={style.y} min={-1} max={1} step={0.01} onChange={(y) => apply({ y, x: 0 })} />
       </section>
       <TextStyleEditor value={style} onChange={apply} sample="Hola" />
+      <details className="group">
+        <summary>Avanzado</summary>
+        <Slider label="Tamaño" value={style.fontSize} min={16} max={200} step={1} unit="px" onChange={(fontSize) => apply({ fontSize })} />
+        <Slider label="Altura" value={style.y} min={-1} max={1} step={0.01} onChange={(y) => apply({ y, x: 0 })} />
+      </details>
     </div>
   );
 }
@@ -372,26 +375,26 @@ export function Subtitles() {
 
   return (
     <div className="subs">
-      <button className={`auto-toggle wide ${open === "generate" ? "on" : "primary"}`} onClick={() => setOpen(open === "generate" ? null : "generate")}>
+      <button className={`auto-toggle wide big ${open === "generate" ? "on" : "primary"}`} onClick={() => setOpen(open === "generate" ? null : "generate")}>
         <Icon name="sparkles" /> {open === "generate" ? "Ocultar creación automática" : "Crear automáticamente"}
       </button>
       <div className="subs-actions">
-        <button onClick={add} title="Añadir un subtítulo en la posición de la línea verde">
+        <button onClick={add} title="Escribir tú un subtítulo donde está la línea verde">
           <Icon name="plus" /> Añadir a mano
         </button>
-        <button className={open === "style" ? "on" : ""} onClick={() => setOpen(open === "style" ? null : "style")} disabled={!lines.length}>
+        <button className={open === "style" ? "on" : ""} onClick={() => setOpen(open === "style" ? null : "style")} disabled={!lines.length} title="Cambiar la letra, el color y el tamaño de todos los subtítulos">
           <Icon name="type" /> Estilo
         </button>
         <details className="menu">
-          <summary className="tool" aria-label="Archivo SRT" title="Importar o exportar SRT">
+          <summary className="tool" aria-label="Archivo de subtítulos" title="Abrir o guardar un archivo de subtítulos (.srt)">
             <Icon name="more" />
           </summary>
           <div className="menu-pop down">
             <button onClick={() => fileInput.current?.click()}>
-              <Icon name="upload" /> Importar .srt / .vtt
+              <Icon name="upload" /> Abrir archivo de subtítulos (.srt / .vtt)
             </button>
             <button onClick={() => void exportSrt()} disabled={!lines.length}>
-              <Icon name="download" /> Exportar .srt
+              <Icon name="download" /> Guardar como archivo .srt
             </button>
           </div>
         </details>
@@ -423,7 +426,7 @@ export function Subtitles() {
         <div className="notice">
           <Icon name="check" />
           <p>
-            <b>Listo: {review} frases.</b> Revísalas: toca el número de una frase para escucharla y corrige el texto si algo no se entendió bien.
+            <b>¡Listo! {review} frases.</b> Revísalas: toca el número de una frase para escucharla y corrige el texto si algo no se entendió bien.
           </p>
           <button className="ghost square" onClick={() => setReview(null)} aria-label="Cerrar aviso">
             <Icon name="close" size={14} />
@@ -444,16 +447,16 @@ export function Subtitles() {
               className={`sub-row ${l.id === activeId ? "active" : ""} ${selected.includes(l.id) ? "selected" : ""} ${flash === l.id ? "flash" : ""}`}
             >
               <div className="sub-head">
-                <button className="sub-index" onClick={() => seek(l)} title="Ir a este subtítulo">
+                <button className="sub-index" onClick={() => seek(l)} title="Ir a este subtítulo y escucharlo">
                   {i + 1}
                 </button>
                 <TimeField value={l.start} label="Inicio" onCommit={(v) => setTiming(l, v, clipEnd(l))} />
-                <button className="ghost mini" onClick={() => setTiming(l, s().time, clipEnd(l))} title="Inicio en el cabezal" aria-label="Inicio en el cabezal">
+                <button className="ghost mini" onClick={() => setTiming(l, s().time, clipEnd(l))} title="Que empiece donde está la línea verde" aria-label="Empezar en la línea verde">
                   <Icon name="start" size={12} />
                 </button>
                 <span className="muted">→</span>
                 <TimeField value={clipEnd(l)} label="Fin" onCommit={(v) => setTiming(l, l.start, v)} />
-                <button className="ghost mini" onClick={() => setTiming(l, l.start, s().time)} title="Fin en el cabezal" aria-label="Fin en el cabezal">
+                <button className="ghost mini" onClick={() => setTiming(l, l.start, s().time)} title="Que termine donde está la línea verde" aria-label="Terminar en la línea verde">
                   <Icon name="end" size={12} />
                 </button>
                 <span className="grow" />
@@ -463,8 +466,8 @@ export function Subtitles() {
                     s().select([l.id]);
                     s().deleteSelected();
                   }}
-                  title="Eliminar subtítulo"
-                  aria-label="Eliminar subtítulo"
+                  title="Borrar este subtítulo"
+                  aria-label="Borrar subtítulo"
                 >
                   <Icon name="trash" size={14} />
                 </button>

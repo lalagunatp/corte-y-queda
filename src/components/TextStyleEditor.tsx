@@ -97,7 +97,7 @@ export function TextStyleEditor({ value, onChange, sample = "Texto" }: { value: 
   return (
     <>
       <section className="group">
-        <h4>Estilos rápidos</h4>
+        <h4>Estilos listos (toca uno)</h4>
         <div className="style-presets">
           {TEXT_PRESETS.map((p, i) => (
             <button key={p.name} className={`style-preset ${preset === i ? "on" : ""}`} onClick={() => onChange(presetPatch(p.style))}>
@@ -109,7 +109,7 @@ export function TextStyleEditor({ value, onChange, sample = "Texto" }: { value: 
       </section>
 
       <section className="group">
-        <h4>Fuente</h4>
+        <h4>Tipo de letra</h4>
         <div className="font-list">
           {CATEGORIES.map((cat) => (
             <div key={cat} className="font-cat">
@@ -127,106 +127,118 @@ export function TextStyleEditor({ value, onChange, sample = "Texto" }: { value: 
             </div>
           ))}
         </div>
-        {font.weights.length > 1 && (
-          <Segmented
-            value={nearestWeight(font, value.weight)}
-            onPick={(weight) => onChange({ weight })}
-            options={font.weights.map((w) => ({ value: w, label: WEIGHT_LABELS[w] ?? String(w) }))}
-          />
-        )}
-        <Segmented
-          value={value.textCase}
-          onPick={(textCase) => onChange({ textCase })}
-          options={[
-            { value: "none", label: "Aa" },
-            { value: "upper", label: "AA" },
-            { value: "lower", label: "aa" },
-            { value: "title", label: "Título" },
-          ]}
-        />
-        <Segmented
-          value={value.decoration}
-          onPick={(decoration) => onChange({ decoration })}
-          options={[
-            { value: "none", label: "Normal" },
-            { value: "underline", label: "Subrayado" },
-            { value: "strike", label: "Tachado" },
-          ]}
-        />
-        <Toggle on={value.italic} label="Cursiva" onChange={(italic) => onChange({ italic })} />
-      </section>
-
-      <section className="group">
-        <h4>Alineación</h4>
-        <Segmented
-          value={value.align}
-          onPick={(align) => onChange({ align })}
-          options={[
-            { value: "left", label: "Izquierda" },
-            { value: "center", label: "Centro" },
-            { value: "right", label: "Derecha" },
-          ]}
-        />
       </section>
 
       <section className="group">
         <h4>Color</h4>
         <ColorRow value={value.color} label="Color" onPick={(color) => onChange({ color })} />
-        <Toggle on={value.gradient != null} label="Degradado" onChange={(v) => onChange({ gradient: v ? "#f43f5e" : null })} />
-        {value.gradient != null && <ColorRow value={value.gradient} label="Color final" onPick={(gradient) => onChange({ gradient })} />}
       </section>
 
-      <section className="group">
-        <Toggle on={value.strokeWidth > 0} label="Contorno" onChange={(v) => onChange({ strokeWidth: v ? 0.06 : 0 })} />
-        {value.strokeWidth > 0 && (
-          <>
-            <ColorRow value={value.strokeColor} label="Contorno" onPick={(strokeColor) => onChange({ strokeColor })} />
-            <Slider label="Grosor" value={value.strokeWidth} min={0.01} max={0.25} step={0.005} format={percent} unit="%" onChange={(strokeWidth) => onChange({ strokeWidth })} />
-          </>
-        )}
-      </section>
+      {/* Lo menos usado queda plegado para no abrumar; todo sigue a un toque. */}
+      <details className="group more">
+        <summary>Más opciones de letra (grosor, sombra, contorno, fondo…)</summary>
 
-      <section className="group">
-        <h4>Sombra</h4>
-        <Segmented value={shadowKind(value)} onPick={(i) => onChange(SHADOWS[i].patch(value))} options={SHADOWS.map((o, i) => ({ value: i, label: o.label }))} />
-        {shadowOn && (
-          <details>
-            <summary>Ajustar sombra</summary>
-            <ColorRow value={value.shadowColor} label="Sombra" onPick={(c) => onChange({ shadowColor: withAlpha(c, alphaOf(value.shadowColor)) })} />
-            <Slider label="Opacidad" value={alphaOf(value.shadowColor)} min={0.05} max={1} step={0.01} format={percent} unit="%" onChange={(a) => onChange({ shadowColor: withAlpha(value.shadowColor, a) })} />
-            <Slider label="Desenfoque" value={value.shadowBlur} min={0} max={0.6} step={0.01} format={percent} unit="%" onChange={(shadowBlur) => onChange({ shadowBlur })} />
-            <Slider label="Horizontal" value={value.shadowX} min={-0.2} max={0.2} step={0.005} format={percent} unit="%" onChange={(shadowX) => onChange({ shadowX })} />
-            <Slider label="Vertical" value={value.shadowY} min={-0.2} max={0.2} step={0.005} format={percent} unit="%" onChange={(shadowY) => onChange({ shadowY })} />
-          </details>
-        )}
-      </section>
-
-      <section className="group">
-        <Toggle on={bgOn} label="Fondo" onChange={(v) => onChange({ background: v ? "#000000aa" : "#00000000" })} />
-        {bgOn && (
-          <>
-            <ColorRow value={value.background} label="Fondo" onPick={(c) => onChange({ background: withAlpha(c, alphaOf(value.background)) })} />
-            <Slider label="Opacidad" value={alphaOf(value.background)} min={0.05} max={1} step={0.01} format={percent} unit="%" onChange={(a) => onChange({ background: withAlpha(value.background, a) })} />
+        <section className="group">
+          <h4>Letra</h4>
+          {font.weights.length > 1 && (
             <Segmented
-              value={value.bgShape}
-              onPick={(bgShape) => onChange({ bgShape })}
-              options={[
-                { value: "block", label: "Un bloque" },
-                { value: "lines", label: "Por renglón" },
-              ]}
+              value={nearestWeight(font, value.weight)}
+              onPick={(weight) => onChange({ weight })}
+              options={font.weights.map((w) => ({ value: w, label: WEIGHT_LABELS[w] ?? String(w) }))}
             />
-            <Slider label="Redondeo" value={value.bgRadius} min={0} max={1} step={0.01} format={percent} unit="%" onChange={(bgRadius) => onChange({ bgRadius })} />
-            <Slider label="Relleno" value={value.bgPadding} min={0} max={1} step={0.01} format={percent} unit="%" onChange={(bgPadding) => onChange({ bgPadding })} />
-          </>
-        )}
-      </section>
+          )}
+          <Segmented
+            value={value.textCase}
+            onPick={(textCase) => onChange({ textCase })}
+            options={[
+              { value: "none", label: "Normal" },
+              { value: "upper", label: "ABC" },
+              { value: "lower", label: "abc" },
+              { value: "title", label: "Título" },
+            ]}
+          />
+          <Segmented
+            value={value.decoration}
+            onPick={(decoration) => onChange({ decoration })}
+            options={[
+              { value: "none", label: "Normal" },
+              { value: "underline", label: "Subrayado" },
+              { value: "strike", label: "Tachado" },
+            ]}
+          />
+          <Toggle on={value.italic} label="Cursiva" onChange={(italic) => onChange({ italic })} />
+        </section>
 
-      <details className="group">
-        <summary>Espaciado y giro</summary>
-        <Slider label="Letras" value={value.letterSpacing} min={-0.1} max={0.5} step={0.005} format={percent} unit="%" onChange={(letterSpacing) => onChange({ letterSpacing })} />
-        <Slider label="Renglones" value={value.lineHeight} min={0.8} max={2.5} step={0.05} unit="×" onChange={(lineHeight) => onChange({ lineHeight })} />
-        <Slider label="Opacidad" value={value.opacity} min={0.05} max={1} step={0.01} format={percent} unit="%" onChange={(opacity) => onChange({ opacity })} />
-        <Slider label="Giro" value={value.rotation} min={-180} max={180} step={1} unit="°" onChange={(rotation) => onChange({ rotation })} />
+        <section className="group">
+          <h4>Alineación</h4>
+          <Segmented
+            value={value.align}
+            onPick={(align) => onChange({ align })}
+            options={[
+              { value: "left", label: "Izquierda" },
+              { value: "center", label: "Centro" },
+              { value: "right", label: "Derecha" },
+            ]}
+          />
+        </section>
+
+        <section className="group">
+          <Toggle on={value.gradient != null} label="Degradado (dos colores)" onChange={(v) => onChange({ gradient: v ? "#f43f5e" : null })} />
+          {value.gradient != null && <ColorRow value={value.gradient} label="Color final" onPick={(gradient) => onChange({ gradient })} />}
+        </section>
+
+        <section className="group">
+          <Toggle on={value.strokeWidth > 0} label="Contorno (borde de las letras)" onChange={(v) => onChange({ strokeWidth: v ? 0.06 : 0 })} />
+          {value.strokeWidth > 0 && (
+            <>
+              <ColorRow value={value.strokeColor} label="Contorno" onPick={(strokeColor) => onChange({ strokeColor })} />
+              <Slider label="Grosor" value={value.strokeWidth} min={0.01} max={0.25} step={0.005} format={percent} unit="%" onChange={(strokeWidth) => onChange({ strokeWidth })} />
+            </>
+          )}
+        </section>
+
+        <section className="group">
+          <h4>Sombra</h4>
+          <Segmented value={shadowKind(value)} onPick={(i) => onChange(SHADOWS[i].patch(value))} options={SHADOWS.map((o, i) => ({ value: i, label: o.label }))} />
+          {shadowOn && (
+            <details>
+              <summary>Ajustar sombra</summary>
+              <ColorRow value={value.shadowColor} label="Sombra" onPick={(c) => onChange({ shadowColor: withAlpha(c, alphaOf(value.shadowColor)) })} />
+              <Slider label="Opacidad" value={alphaOf(value.shadowColor)} min={0.05} max={1} step={0.01} format={percent} unit="%" onChange={(a) => onChange({ shadowColor: withAlpha(value.shadowColor, a) })} />
+              <Slider label="Difuminado" value={value.shadowBlur} min={0} max={0.6} step={0.01} format={percent} unit="%" onChange={(shadowBlur) => onChange({ shadowBlur })} />
+              <Slider label="Horizontal" value={value.shadowX} min={-0.2} max={0.2} step={0.005} format={percent} unit="%" onChange={(shadowX) => onChange({ shadowX })} />
+              <Slider label="Vertical" value={value.shadowY} min={-0.2} max={0.2} step={0.005} format={percent} unit="%" onChange={(shadowY) => onChange({ shadowY })} />
+            </details>
+          )}
+        </section>
+
+        <section className="group">
+          <Toggle on={bgOn} label="Fondo detrás del texto" onChange={(v) => onChange({ background: v ? "#000000aa" : "#00000000" })} />
+          {bgOn && (
+            <>
+              <ColorRow value={value.background} label="Fondo" onPick={(c) => onChange({ background: withAlpha(c, alphaOf(value.background)) })} />
+              <Slider label="Opacidad" value={alphaOf(value.background)} min={0.05} max={1} step={0.01} format={percent} unit="%" onChange={(a) => onChange({ background: withAlpha(value.background, a) })} />
+              <Segmented
+                value={value.bgShape}
+                onPick={(bgShape) => onChange({ bgShape })}
+                options={[
+                  { value: "block", label: "Un bloque" },
+                  { value: "lines", label: "Por renglón" },
+                ]}
+              />
+              <Slider label="Redondeo" value={value.bgRadius} min={0} max={1} step={0.01} format={percent} unit="%" onChange={(bgRadius) => onChange({ bgRadius })} />
+              <Slider label="Relleno" value={value.bgPadding} min={0} max={1} step={0.01} format={percent} unit="%" onChange={(bgPadding) => onChange({ bgPadding })} />
+            </>
+          )}
+        </section>
+
+        <details className="group">
+          <summary>Espaciado y giro</summary>
+          <Slider label="Letras" value={value.letterSpacing} min={-0.1} max={0.5} step={0.005} format={percent} unit="%" onChange={(letterSpacing) => onChange({ letterSpacing })} />
+          <Slider label="Renglones" value={value.lineHeight} min={0.8} max={2.5} step={0.05} unit="×" onChange={(lineHeight) => onChange({ lineHeight })} />
+          <Slider label="Opacidad" value={value.opacity} min={0.05} max={1} step={0.01} format={percent} unit="%" onChange={(opacity) => onChange({ opacity })} />
+          <Slider label="Giro" value={value.rotation} min={-180} max={180} step={1} unit="°" onChange={(rotation) => onChange({ rotation })} />
+        </details>
       </details>
     </>
   );

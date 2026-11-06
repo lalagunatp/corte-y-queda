@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { ExportDialog } from "./components/ExportDialog";
 import { Guide } from "./components/Guide";
 import { Home } from "./components/Home";
@@ -81,6 +81,7 @@ function Editor({ onHome }: { onHome(): Promise<void> }) {
   const compact = useMediaQuery(COMPACT_QUERY);
   const [settings, setSettings] = useState(false);
   const install = useInstallPrompt();
+  const picker = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     // El autoguardado empieza después de abrir, para no contar la carga como un cambio.
@@ -119,20 +120,45 @@ function Editor({ onHome }: { onHome(): Promise<void> }) {
       }}
     >
       <header className="topbar">
-        <button className="ghost back" onClick={() => void onHome()} title="Volver a Mis proyectos (se guarda antes)">
+        <button className="ghost back" onClick={() => void onHome()} title="Volver a Mis videos (se guarda antes)">
           <Icon name="back-arrow" />
-          {!compact && "Proyectos"}
+          {!compact && "Mis videos"}
         </button>
         <span className="sep" />
-        <button className="ghost project" onClick={() => setSettings(true)} title="Nombre y ajustes del proyecto">
+        <button className="ghost project" onClick={() => setSettings(true)} title="Cambiar el nombre, la forma y el fondo del video">
           {projectName}
         </button>
         <SaveIndicator compact={compact} />
         <span className="grow" />
         {status && <span className="status">{status}</span>}
+        {/* Las acciones principales, siempre a la vista en pantalla grande. */}
         {!compact && (
-          <button className="ghost" onClick={() => void saveNow().then(() => s().setStatus("Proyecto guardado"))} title="Guardar ahora (Ctrl+S)">
-            <Icon name="save" /> Guardar
+          <div className="actions">
+            <button onClick={() => picker.current?.click()} title="Añadir videos, fotos o música desde tu equipo">
+              <Icon name="upload" /> Importar
+            </button>
+            <button onClick={() => s().addText()} title="Poner un texto encima del video">
+              <Icon name="type" /> Texto
+            </button>
+            <button onClick={() => useUi.getState().openSubtitles()} title="Escribir o crear solos los subtítulos de lo que se dice">
+              <Icon name="captions" /> Subtítulos
+            </button>
+            <input
+              ref={picker}
+              type="file"
+              multiple
+              hidden
+              accept="video/*,image/*,audio/*"
+              onChange={(e) => {
+                if (e.target.files) void importIntoProject(e.target.files);
+                e.target.value = "";
+              }}
+            />
+          </div>
+        )}
+        {!compact && (
+          <button className="ghost square" onClick={() => void saveNow().then(() => s().setStatus("Proyecto guardado"))} title="Guardar ahora (Ctrl+S). También se guarda solo." aria-label="Guardar">
+            <Icon name="save" />
           </button>
         )}
         {install && (
@@ -140,14 +166,14 @@ function Editor({ onHome }: { onHome(): Promise<void> }) {
             <Icon name="download" />
           </button>
         )}
-        <button className="ghost" onClick={() => setSettings(true)} title="Ajustes" aria-label="Ajustes">
+        <button className="ghost" onClick={() => setSettings(true)} title="Ajustes del proyecto" aria-label="Ajustes">
           <Icon name="settings" />
         </button>
-        <button className="ghost" onClick={() => setHelp(true)} title="Ayuda" aria-label="Ayuda">
+        <button className="ghost" onClick={() => setHelp(true)} title="¿Cómo se usa?" aria-label="Ayuda">
           <Icon name="help" />
         </button>
         {!compact && (
-          <button className="primary" onClick={() => setExporting(true)} disabled={!hasClips}>
+          <button className="primary" onClick={() => setExporting(true)} disabled={!hasClips} title={hasClips ? "Guardar tu video terminado como archivo" : "Primero añade algo a tu video"}>
             <Icon name="export" /> Exportar
           </button>
         )}
@@ -158,10 +184,10 @@ function Editor({ onHome }: { onHome(): Promise<void> }) {
           <aside className="leftcol">
             <div className="tabs" role="tablist">
               <button role="tab" aria-selected={left === "media"} className={left === "media" ? "on" : ""} onClick={() => setLeft("media")}>
-                Medios
+                <Icon name="media" size={16} /> Archivos
               </button>
               <button role="tab" aria-selected={left === "subtitles"} className={left === "subtitles" ? "on" : ""} onClick={() => setLeft("subtitles")}>
-                Subtítulos
+                <Icon name="captions" size={16} /> Subtítulos
               </button>
             </div>
             <div className="leftcol-body">{left === "media" ? <MediaBin /> : <Subtitles />}</div>
@@ -178,7 +204,7 @@ function Editor({ onHome }: { onHome(): Promise<void> }) {
 
       {/* En pantallas pequeñas el panel abierto ocupa el sitio de la línea de tiempo: la vista previa sigue visible. */}
       {compact && sheet ? (
-        <Dock title={sheet === "media" ? "Medios" : sheet === "edit" ? "Editar" : "Subtítulos"} onClose={() => setSheet(null)}>
+        <Dock title={sheet === "media" ? "Archivos" : sheet === "edit" ? "Editar" : "Subtítulos"} onClose={() => setSheet(null)}>
           {sheet === "media" && <MediaBin />}
           {sheet === "edit" && (
             <div className="inspector">
@@ -199,7 +225,7 @@ function Editor({ onHome }: { onHome(): Promise<void> }) {
         <nav className="bottomnav">
           <button className={sheet === "media" ? "on" : ""} onClick={() => setSheet(sheet === "media" ? null : "media")}>
             <Icon name="media" size={22} />
-            Medios
+            Archivos
           </button>
           <button className={sheet === "edit" ? "on" : ""} onClick={() => setSheet(sheet === "edit" ? null : "edit")}>
             <Icon name="sliders" size={22} />

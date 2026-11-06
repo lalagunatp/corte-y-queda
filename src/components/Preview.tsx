@@ -113,10 +113,12 @@ export function Preview() {
         />
         {empty && (
           <div className="welcome">
-            <p className="muted">Importa videos, imágenes o audio para empezar</p>
-            <button className="primary" onClick={() => picker.current?.click()}>
-              <Icon name="upload" /> Importar archivos
+            <h2 className="welcome-title">¡Empecemos!</h2>
+            <p className="lead-muted">Elige los videos, fotos o música que quieras usar.</p>
+            <button className="primary big" onClick={() => picker.current?.click()}>
+              <Icon name="upload" size={20} /> Elegir archivos
             </button>
+            <p className="muted small">También puedes arrastrarlos a esta ventana.</p>
             <input
               ref={picker}
               type="file"
@@ -148,13 +150,13 @@ export function Preview() {
         <button className="ghost" onClick={() => setTime(0)} title="Ir al inicio (Inicio)" aria-label="Ir al inicio">
           <Icon name="start" size={16} />
         </button>
-        <button className="ghost" onClick={() => setTime(time - 1)} title="Atrás 1 s (←)" aria-label="Atrás">
+        <button className="ghost" onClick={() => setTime(time - 1)} title="Atrás 1 segundo (←)" aria-label="Atrás 1 segundo">
           <Icon name="back" size={16} />
         </button>
         <button className="play" onClick={toggle} disabled={empty} title="Reproducir / pausar (Espacio)" aria-label={playing ? "Pausar" : "Reproducir"}>
           <Icon name={playing ? "pause" : "play"} size={18} />
         </button>
-        <button className="ghost" onClick={() => setTime(time + 1)} title="Adelante 1 s (→)" aria-label="Adelante">
+        <button className="ghost" onClick={() => setTime(time + 1)} title="Adelante 1 segundo (→)" aria-label="Adelante 1 segundo">
           <Icon name="forward" size={16} />
         </button>
         <button className="ghost" onClick={() => setTime(duration)} title="Ir al final (Fin)" aria-label="Ir al final">
@@ -168,7 +170,7 @@ export function Preview() {
           <button
             className="ghost expand"
             onClick={() => setExpanded(!expanded)}
-            title={expanded ? "Volver (Esc)" : "Ampliar la vista previa"}
+            title={expanded ? "Volver (Esc)" : "Ver el video en grande"}
             aria-label={expanded ? "Volver" : "Ampliar"}
             disabled={empty}
           >

@@ -3,7 +3,7 @@ import { decodedAudio } from "../media";
 import { selectDuration, useEditor } from "../store";
 import type { Clip, MediaClip, Track } from "../types";
 import { clipEnd, formatTime } from "../util";
-import { COMPACT_QUERY, useUi } from "../ui";
+import { COMPACT_QUERY, useMediaQuery, useUi } from "../ui";
 import { Icon, type IconName } from "./Icon";
 import { ASSET_DRAG_TYPE } from "./MediaBin";
 
@@ -58,6 +58,7 @@ export function Timeline() {
   const selected = useEditor((s) => s.selected);
   const duration = useEditor(selectDuration);
   const s = useEditor.getState;
+  const compact = useMediaQuery(COMPACT_QUERY);
   const [snapping, setSnapping] = useState(true);
   const scroller = useRef<HTMLDivElement>(null);
   const assets = new Map(project.assets.map((a) => [a.id, a]));
@@ -182,23 +183,32 @@ export function Timeline() {
   return (
     <section className="timeline">
       <div className="tl-toolbar">
-        <button className="tool" onClick={() => s().splitAtPlayhead()} disabled={!project.clips.length} title="Dividir en el cabezal (S)">
+        <button className="tool" onClick={() => s().splitAtPlayhead()} disabled={!project.clips.length} title="Cortar en dos donde está la línea verde (S)">
           <Icon name="scissors" />
-          <span>Dividir</span>
+          <span>Cortar</span>
         </button>
-        <button className="tool" onClick={() => s().deleteSelected()} disabled={!selected.length} title="Eliminar (Supr)">
+        <button className="tool" onClick={() => s().deleteSelected()} disabled={!selected.length} title={selected.length ? "Borrar lo seleccionado (Supr)" : "Primero toca un clip para elegirlo"}>
           <Icon name="trash" />
           <span>Eliminar</span>
         </button>
-        <button className="tool" onClick={() => s().duplicateSelected()} disabled={!selected.length} title="Duplicar (Ctrl+D)">
+        <button className="tool" onClick={() => s().duplicateSelected()} disabled={!selected.length} title={selected.length ? "Hacer una copia (Ctrl+D)" : "Primero toca un clip para elegirlo"}>
           <Icon name="copy" />
           <span>Duplicar</span>
         </button>
+        {!compact && (
+          <>
+            <span className="sep" />
+            <button className="tool add" onClick={() => s().addText()} title="Poner un texto donde está la línea verde">
+              <Icon name="type" />
+              <span>Añadir texto</span>
+            </button>
+          </>
+        )}
         <span className="grow" />
-        <button className="tool" onClick={() => s().setZoom(zoom / 1.4)} title="Alejar (-)" aria-label="Alejar">
+        <button className="tool" onClick={() => s().setZoom(zoom / 1.4)} title="Ver más tiempo (-)" aria-label="Alejar">
           <Icon name="zoomOut" />
         </button>
-        <button className="tool" onClick={() => s().setZoom(zoom * 1.4)} title="Acercar (+)" aria-label="Acercar">
+        <button className="tool" onClick={() => s().setZoom(zoom * 1.4)} title="Ver más detalle (+)" aria-label="Acercar">
           <Icon name="zoomIn" />
         </button>
         <details className="menu">
@@ -207,16 +217,16 @@ export function Timeline() {
           </summary>
           <div className="menu-pop">
             <button onClick={() => s().addTrack("video")}>
-              <Icon name="film" /> Nueva pista de video
+              <Icon name="film" /> Añadir fila de video
             </button>
             <button onClick={() => s().addTrack("audio")}>
-              <Icon name="music" /> Nueva pista de audio
+              <Icon name="music" /> Añadir fila de sonido
             </button>
             <button onClick={() => s().addTrack("text")}>
-              <Icon name="type" /> Nueva pista de texto
+              <Icon name="type" /> Añadir fila de texto
             </button>
             <label className="check">
-              <input type="checkbox" checked={snapping} onChange={(e) => setSnapping(e.target.checked)} /> Ajuste magnético
+              <input type="checkbox" checked={snapping} onChange={(e) => setSnapping(e.target.checked)} /> Imán: pegar los clips al moverlos
             </label>
           </div>
         </details>
@@ -231,12 +241,12 @@ export function Timeline() {
               </span>
               <span className="tname">{t.name}</span>
               {t.kind !== "audio" && (
-                <button className={`eye ${t.hidden ? "off" : ""}`} onClick={() => s().updateTrack(t.id, { hidden: !t.hidden })} title={t.hidden ? "Mostrar pista" : "Ocultar pista"}>
+                <button className={`eye ${t.hidden ? "off" : ""}`} onClick={() => s().updateTrack(t.id, { hidden: !t.hidden })} title={t.hidden ? "Mostrar esta fila" : "Ocultar esta fila"}>
                   <Icon name={t.hidden ? "eyeOff" : "eye"} size={15} />
                 </button>
               )}
               {t.kind !== "text" && (
-                <button className={t.muted ? "off" : ""} onClick={() => s().updateTrack(t.id, { muted: !t.muted })} title={t.muted ? "Activar sonido" : "Silenciar pista"}>
+                <button className={t.muted ? "off" : ""} onClick={() => s().updateTrack(t.id, { muted: !t.muted })} title={t.muted ? "Activar sonido" : "Quitar el sonido de esta fila"}>
                   <Icon name={t.muted ? "mute" : "volume"} size={15} />
                 </button>
               )}
@@ -244,9 +254,9 @@ export function Timeline() {
                 className="trash"
                 onClick={() => {
                   const n = project.clips.filter((c) => c.trackId === t.id).length;
-                  if (n === 0 || confirm(`¿Eliminar la pista «${t.name}» y sus ${n} clip(s)?`)) s().removeTrack(t.id);
+                  if (n === 0 || confirm(`¿Borrar la fila «${t.name}» y lo que tiene (${n})?`)) s().removeTrack(t.id);
                 }}
-                title="Eliminar pista"
+                title="Borrar esta fila"
               >
                 <Icon name="close" size={13} />
               </button>
@@ -265,7 +275,7 @@ export function Timeline() {
           }}
         >
           {!project.clips.length && (
-            <div className="tl-empty">La línea de tiempo está vacía</div>
+            <div className="tl-empty">Aquí se arma tu video. Añade archivos y aparecerán en esta zona.</div>
           )}
           <div style={{ width, position: "relative" }}>
             <div className="ruler" onPointerDown={(e) => { e.stopPropagation(); scrub(e); }}>

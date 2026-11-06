@@ -19,7 +19,7 @@ export function ProjectSettings({ onClose }: { onClose(): void }) {
     <div className="modal-back" onClick={onClose}>
       <div className="modal" onClick={(e) => e.stopPropagation()} role="dialog" aria-label="Ajustes del proyecto">
         <div className="modal-head">
-          <h2>Proyecto</h2>
+          <h2>Ajustes del video</h2>
           <button className="ghost" onClick={onClose} aria-label="Cerrar">
             <Icon name="close" />
           </button>
@@ -31,7 +31,7 @@ export function ProjectSettings({ onClose }: { onClose(): void }) {
         </label>
 
         <div className="stack">
-          <span>Formato</span>
+          <span>Forma del video</span>
           <div className="choices four">
             {ASPECTS.map((a) => {
               const info = SHAPES[a.label];
@@ -50,7 +50,7 @@ export function ProjectSettings({ onClose }: { onClose(): void }) {
         </div>
 
         <div className="stack">
-          <span>Fondo</span>
+          <span>Color de fondo (se ve donde no hay imagen)</span>
           <div className="swatches">
             {BACKGROUNDS.map((c) => (
               <button
@@ -68,7 +68,7 @@ export function ProjectSettings({ onClose }: { onClose(): void }) {
         <details>
           <summary>Avanzado</summary>
           <label className="stack">
-            <span>Fotogramas por segundo</span>
+            <span>Fotogramas por segundo (fps)</span>
             <select value={project.fps} onChange={(e) => edit(() => ({ fps: Number(e.target.value) }))}>
               {[24, 25, 30, 50, 60].map((f) => (
                 <option key={f} value={f}>{f} fps</option>
@@ -76,7 +76,7 @@ export function ProjectSettings({ onClose }: { onClose(): void }) {
             </select>
           </label>
         </details>
-        <p className="muted small">Para crear otro proyecto, vuelve a «Proyectos» (arriba a la izquierda). Este se guarda solo.</p>
+        <p className="muted small">Este video se guarda solo. Para crear otro, vuelve a «Mis videos» (arriba a la izquierda).</p>
       </div>
     </div>
   );
