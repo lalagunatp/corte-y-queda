@@ -53,9 +53,10 @@ export function ExportDialog({ onClose }: { onClose(): void }) {
   const outW = even((project.width / project.height) * outH);
   const upscales = native != null && short > native * 1.05;
 
-  // HEVC solo se ofrece si este equipo lo codifica; si no, se exporta en H.264.
+  // H.264 por defecto: se abre en cualquier reproductor. HEVC (si este equipo lo codifica) es opcional,
+  // porque sin la extensión de Microsoft el Reproductor de Windows no lo muestra.
   const [hevc, setHevc] = useState<boolean | null>(null);
-  const [codec, setCodec] = useState<ExportCodec>("hevc");
+  const [codec, setCodec] = useState<ExportCodec>("avc");
   useEffect(() => {
     let live = true;
     supportsHevc(outW, outH, fps).then((ok) => live && setHevc(ok));
@@ -126,15 +127,20 @@ export function ExportDialog({ onClose }: { onClose(): void }) {
             </p>
             {hevc && (
               <div className="segmented">
+                <button className={codec === "avc" ? "on" : ""} onClick={() => setCodec("avc")} disabled={!!progress}>
+                  <b>Compatible</b>
+                  <small>Se ve en todos lados</small>
+                </button>
                 <button className={codec === "hevc" ? "on" : ""} onClick={() => setCodec("hevc")} disabled={!!progress}>
                   <b>Ligero</b>
                   <small>Mitad de peso</small>
                 </button>
-                <button className={codec === "avc" ? "on" : ""} onClick={() => setCodec("avc")} disabled={!!progress}>
-                  <b>Compatible</b>
-                  <small>Equipos antiguos</small>
-                </button>
               </div>
+            )}
+            {chosen === "hevc" && (
+              <p className="small" style={{ color: "#e8b04a", margin: 0 }}>
+                Algunos reproductores (como el de Windows sin la extensión HEVC) no muestran la imagen de este formato. Si vas a compartirlo, usa Compatible.
+              </p>
             )}
             {upscales && (
               <p className="small" style={{ color: "#e8b04a", margin: 0 }}>
