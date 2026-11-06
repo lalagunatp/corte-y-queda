@@ -180,8 +180,23 @@ export function Timeline() {
   const tickStep = zoom > 120 ? 1 : zoom > 40 ? 2 : zoom > 15 ? 5 : 10;
   const ticks = Array.from({ length: Math.ceil(width / zoom / tickStep) + 1 }, (_, i) => i * tickStep);
 
+  const first = project.clips.find((c) => c.id === selected[0]);
+  const tip = !project.clips.length
+    ? "Empieza tocando «Elegir archivos» y escoge tus videos o fotos."
+    : !selected.length
+      ? "Toca ▶ para ver tu video. Toca un clip de abajo para elegirlo y cambiarlo."
+      : selected.length > 1
+        ? `Elegiste ${selected.length} clips: arrástralos para moverlos juntos o bórralos.`
+        : first?.type === "text"
+          ? "Cambia el texto y su estilo en «Editar». Arrastra el clip para elegir cuándo aparece."
+          : "Arrastra el clip para moverlo, tira de sus bordes para acortarlo o usa «Cortar» en la línea verde.";
+
   return (
     <section className="timeline">
+      {/* Siempre dice qué se puede hacer a continuación, según lo que hay en pantalla. */}
+      <p className="next-step" aria-live="polite">
+        <Icon name="help" size={16} /> {tip}
+      </p>
       <div className="tl-toolbar">
         <button className="tool" onClick={() => s().splitAtPlayhead()} disabled={!project.clips.length} title="Cortar en dos donde está la línea verde (S)">
           <Icon name="scissors" />

@@ -16,6 +16,14 @@ const QUALITY: { value: ExportQuality; label: string }[] = [
   { value: "maxima", label: "Máxima (más pesado)" },
 ];
 
+const CONFETTI_COLORS = ["#3563c9", "#a2559a", "#23845a", "#e0a100", "#e8593c", "#0b7a67"];
+const CONFETTI = Array.from({ length: 28 }, (_, i) => ({
+  left: (i * 37) % 100,
+  color: CONFETTI_COLORS[i % CONFETTI_COLORS.length],
+  delay: (i % 7) * 0.12,
+  duration: 1.4 + (i % 5) * 0.25,
+}));
+
 // Mismo redondeo a número par que aplica el codificador.
 const even = (n: number) => Math.max(2, Math.round(n / 2) * 2);
 
@@ -105,6 +113,15 @@ export function ExportDialog({ onClose }: { onClose(): void }) {
 
         {saved ? (
           <>
+            {/* Un pequeño festejo al terminar. */}
+            <div className="confetti" aria-hidden="true">
+              {CONFETTI.map((c, i) => (
+                <span key={i} style={{ left: `${c.left}%`, background: c.color, animationDelay: `${c.delay}s`, animationDuration: `${c.duration}s` }} />
+              ))}
+            </div>
+            <div className="celebrate">
+              <Icon name="check" size={34} />
+            </div>
             <p className="done">
               <Icon name="check" /> Se guardó en tu equipo. Ya puedes verlo o compartirlo.
             </p>

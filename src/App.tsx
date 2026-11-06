@@ -134,13 +134,13 @@ function Editor({ onHome }: { onHome(): Promise<void> }) {
         {/* Las acciones principales, siempre a la vista en pantalla grande. */}
         {!compact && (
           <div className="actions">
-            <button onClick={() => picker.current?.click()} title="Añadir videos, fotos o música desde tu equipo">
+            <button className="c-media" onClick={() => picker.current?.click()} title="Añadir videos, fotos o música desde tu equipo">
               <Icon name="upload" /> Importar
             </button>
-            <button onClick={() => s().addText()} title="Poner un texto encima del video">
+            <button className="c-text" onClick={() => s().addText()} title="Poner un texto encima del video">
               <Icon name="type" /> Texto
             </button>
-            <button onClick={() => useUi.getState().openSubtitles()} title="Escribir o crear solos los subtítulos de lo que se dice">
+            <button className="c-subs" onClick={() => useUi.getState().openSubtitles()} title="Escribir o crear solos los subtítulos de lo que se dice">
               <Icon name="captions" /> Subtítulos
             </button>
             <input
@@ -223,19 +223,20 @@ function Editor({ onHome }: { onHome(): Promise<void> }) {
 
       {compact && (
         <nav className="bottomnav">
-          <button className={sheet === "media" ? "on" : ""} onClick={() => setSheet(sheet === "media" ? null : "media")}>
+          <button className={`c-media ${sheet === "media" ? "on" : ""}`} onClick={() => setSheet(sheet === "media" ? null : "media")}>
             <Icon name="media" size={22} />
             Archivos
           </button>
-          <button className={sheet === "edit" ? "on" : ""} onClick={() => setSheet(sheet === "edit" ? null : "edit")}>
+          <button className={`c-edit ${sheet === "edit" ? "on" : ""}`} onClick={() => setSheet(sheet === "edit" ? null : "edit")}>
             <Icon name="sliders" size={22} />
             Editar{hasSelection && <span className="dot" />}
           </button>
-          <button className={sheet === "subtitles" ? "on" : ""} onClick={() => setSheet(sheet === "subtitles" ? null : "subtitles")}>
+          <button className={`c-subs ${sheet === "subtitles" ? "on" : ""}`} onClick={() => setSheet(sheet === "subtitles" ? null : "subtitles")}>
             <Icon name="captions" size={22} />
             Subtítulos
           </button>
           <button
+            className="c-text"
             onClick={() => {
               s().addText();
               setSheet("edit");

@@ -15,6 +15,7 @@
   --video: #3563c9;
   --audio: #23845a;
   --text-clip: #a2559a;
+  --subs: #b45309;
   --image: #a8661a;
   --danger: #c4342f;
   --danger-soft: #c4342f14;
@@ -261,7 +262,7 @@ button.mini { min-height: 30px; min-width: 30px; padding: 0; }
 }
 
 /* ---------- Línea de tiempo ---------- */
-.timeline { display: grid; grid-template-rows: auto minmax(0, 1fr); background: var(--surface); border-top: 1px solid var(--line); min-height: 0; }
+.timeline { display: grid; grid-template-rows: auto auto minmax(0, 1fr); background: var(--surface); border-top: 1px solid var(--line); min-height: 0; }
 .tl-toolbar { display: flex; align-items: center; gap: 2px; padding: 4px 8px; border-bottom: 1px solid var(--line); }
 .tool { background: transparent; color: var(--text-2); padding: 4px 10px; }
 .tool:hover:not(:disabled) { color: var(--text); }
@@ -416,4 +417,33 @@ button.ghost.project-menu-btn { background: var(--surface-2); color: var(--text)
 .center { text-align: center; }
 @media (max-width: 600px) {
   .projects { grid-template-columns: repeat(2, 1fr); gap: 12px; }
+}
+
+/* ---------- Colores por acción ---------- */
+/* Cada acción tiene su color, el mismo que sus clips en la línea de tiempo: así se reconocen de un vistazo. */
+.c-media { --c: var(--video); }
+.c-text { --c: var(--text-clip); }
+.c-subs { --c: var(--subs); }
+.c-edit { --c: var(--accent); }
+.c-media .icon, .c-text .icon, .c-subs .icon, .c-edit .icon { color: var(--c); }
+.topbar .actions > button { border: 1.5px solid color-mix(in srgb, var(--c) 35%, transparent); background: color-mix(in srgb, var(--c) 8%, var(--surface)); }
+.topbar .actions > button:hover:not(:disabled) { background: color-mix(in srgb, var(--c) 16%, var(--surface)); }
+.bottomnav button.on.c-media, .bottomnav button.on.c-text, .bottomnav button.on.c-subs, .bottomnav button.on.c-edit { color: var(--c); background: color-mix(in srgb, var(--c) 12%, transparent); }
+.tool.add { color: var(--text-clip); }
+.tool.add .icon { color: var(--text-clip); }
+
+/* ---------- Pista de qué hacer ---------- */
+.next-step { display: flex; align-items: center; gap: 8px; margin: 0; padding: 6px 12px; background: var(--accent-soft); color: var(--text); font-size: 0.92em; line-height: 1.35; border-bottom: 1px solid var(--line); }
+.next-step .icon { color: var(--accent); }
+
+/* ---------- Festejo al exportar ---------- */
+.modal { position: relative; }
+.celebrate { justify-self: center; width: 72px; height: 72px; border-radius: 50%; display: grid; place-items: center; background: var(--accent); color: var(--accent-ink); animation: pop 0.45s cubic-bezier(0.3, 1.6, 0.5, 1); }
+@keyframes pop { from { transform: scale(0.3); opacity: 0; } to { transform: none; opacity: 1; } }
+.confetti { position: absolute; inset: 0; overflow: hidden; pointer-events: none; border-radius: 14px; }
+.confetti span { position: absolute; top: -12px; width: 8px; height: 12px; border-radius: 2px; opacity: 0; animation: fall linear forwards; }
+@keyframes fall { 0% { transform: translateY(0) rotate(0); opacity: 1; } 100% { transform: translateY(420px) rotate(540deg); opacity: 0; } }
+@media (prefers-reduced-motion: reduce) {
+  .confetti { display: none; }
+  .celebrate { animation: none; }
 }
