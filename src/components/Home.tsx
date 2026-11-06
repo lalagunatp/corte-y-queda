@@ -33,20 +33,20 @@ function NewProject({ onCancel, onCreate }: { onCancel(): void; onCreate(name: s
           e.preventDefault();
           onCreate(name.trim() || "Mi video", a.width, a.height);
         }}
-        aria-label="Nuevo proyecto"
+        aria-label="Nuevo video"
       >
         <div className="modal-head">
-          <h2>Nuevo proyecto</h2>
+          <h2>Nuevo video</h2>
           <button type="button" className="ghost" onClick={onCancel} aria-label="Cerrar">
             <Icon name="close" />
           </button>
         </div>
         <label className="stack">
-          <span>Nombre</span>
+          <span>¿Cómo se llama?</span>
           <input value={name} onChange={(e) => setName(e.target.value)} autoFocus onFocus={(e) => e.target.select()} />
         </label>
         <div className="stack">
-          <span>Formato (se puede cambiar después)</span>
+          <span>¿Qué forma tendrá tu video? (puedes cambiarla después)</span>
           <div className="choices four">
             {ASPECTS.map((x) => {
               const k = 22 / Math.max(x.width, x.height);
@@ -62,7 +62,7 @@ function NewProject({ onCancel, onCreate }: { onCancel(): void; onCreate(name: s
         </div>
         <div className="row-end">
           <button type="submit" className="primary big">
-            Crear proyecto
+            Crear video
           </button>
         </div>
       </form>
@@ -145,21 +145,22 @@ export function Home({ onOpen }: { onOpen(id: string): void }) {
         )}
       </header>
       <main className="home-body">
-        <h1>Mis proyectos</h1>
+        <h1>Mis videos</h1>
         <div className="projects">
           <button className="project-new" onClick={() => setCreating(true)}>
             <span className="plus">
               <Icon name="plus" size={28} />
             </span>
-            <b>Nuevo proyecto</b>
-            <small>Elige el formato y empieza</small>
+            <b>Crear un video nuevo</b>
+            <small>Elige la forma y empieza</small>
           </button>
           {projects?.map((p) => (
             <ProjectCard key={p.id} p={p} onOpen={() => onOpen(p.id)} onChanged={refresh} />
           ))}
         </div>
-        {projects && projects.length === 0 && <p className="muted center">Aún no tienes proyectos. Crea el primero.</p>}
-        <p className="muted small center">Los proyectos se guardan en este equipo y en este navegador; no se suben a internet.</p>
+        {projects && projects.length === 0 && <p className="muted center">Aún no tienes videos. ¡Crea el primero!</p>}
+        {projects && projects.length > 0 && <p className="muted small center">Toca un video para seguir editándolo. Con «⋯» puedes cambiarle el nombre, copiarlo o borrarlo.</p>}
+        <p className="muted small center">Todo se guarda en este equipo; nada se sube a internet.</p>
       </main>
       {creating && (
         <NewProject

@@ -15,14 +15,14 @@ const SOURCES = [
 export function FreeMusic({ onClose, onImport }: { onClose(): void; onImport(): void }) {
   return (
     <div className="modal-back" onClick={onClose}>
-      <div className="modal" onClick={(e) => e.stopPropagation()} role="dialog" aria-label="Música libre">
+      <div className="modal" onClick={(e) => e.stopPropagation()} role="dialog" aria-label="Música gratis">
         <div className="modal-head">
-          <h2>Música libre</h2>
+          <h2>Música gratis</h2>
           <button className="ghost" onClick={onClose} aria-label="Cerrar">
             <Icon name="close" />
           </button>
         </div>
-        <p className="muted">Descarga una pista desde uno de estos sitios y luego impórtala.</p>
+        <p className="lead-muted">1. Abre uno de estos sitios y descarga una canción. 2. Vuelve aquí y toca «Añadir la canción descargada».</p>
         <ul className="sources">
           {SOURCES.map((s) => (
             <li key={s.name}>
@@ -37,7 +37,7 @@ export function FreeMusic({ onClose, onImport }: { onClose(): void; onImport(): 
           ))}
         </ul>
         <details>
-          <summary>Sobre las licencias</summary>
+          <summary>¿Puedo usar cualquier canción? (licencias)</summary>
           <ul className="notes">
             <li><b>CC0 / dominio público:</b> uso libre, sin atribución.</li>
             <li><b>CC BY:</b> indica autor y licencia en la descripción del video.</li>
@@ -48,7 +48,7 @@ export function FreeMusic({ onClose, onImport }: { onClose(): void; onImport(): 
         </details>
         <div className="row-end">
           <button className="primary" onClick={onImport}>
-            <Icon name="upload" /> Importar pista descargada
+            <Icon name="upload" /> Añadir la canción descargada
           </button>
         </div>
       </div>

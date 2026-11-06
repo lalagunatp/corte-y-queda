@@ -107,11 +107,22 @@ export function MediaBin() {
 
       <section className="bin-section">
         <div className="section-head">
-          <button className="primary" onClick={() => visual.current?.click()}>
-            <Icon name="upload" /> Importar
+          <button className="primary wide big" onClick={() => visual.current?.click()}>
+            <Icon name="upload" /> Añadir videos y fotos
           </button>
         </div>
-        {visuals.length ? grid(visuals) : <p className="muted small">Videos e imágenes. También puedes arrastrarlos aquí.</p>}
+        {visuals.length ? (
+          <>
+            <p className="hint">
+              <Icon name="plus" size={16} /> Toca un archivo para ponerlo al final de tu video.
+            </p>
+            {grid(visuals)}
+          </>
+        ) : (
+          <p className="hint">
+            <Icon name="help" size={16} /> Aquí aparecen tus videos y fotos. También puedes arrastrarlos a esta zona.
+          </p>
+        )}
       </section>
 
       <section className="bin-section">
@@ -119,17 +130,17 @@ export function MediaBin() {
           <h2 className="panel-title">Música</h2>
         </div>
         <div className="split">
-          <button onClick={() => audio.current?.click()}>
-            <Icon name="upload" /> Del equipo
+          <button onClick={() => audio.current?.click()} title="Elegir una canción que ya tienes">
+            <Icon name="upload" /> Mi música
           </button>
-          <button onClick={() => setFreeMusic(true)}>
-            <Icon name="music" /> Música libre
+          <button onClick={() => setFreeMusic(true)} title="Sitios donde bajar música gratis">
+            <Icon name="music" /> Música gratis
           </button>
         </div>
         {sounds.length > 0 && grid(sounds)}
       </section>
 
-      <p className="muted small">Los archivos se quedan en este equipo.</p>
+      <p className="muted small">Tus archivos se quedan en este equipo: no se suben a internet.</p>
 
       {freeMusic && (
         <FreeMusic

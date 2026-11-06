@@ -6,15 +6,23 @@ import type { Project } from "../types";
 import { Icon } from "./Icon";
 
 const SIZES = [
-  { short: 720, name: "720p", hint: "Ligero" },
-  { short: 1080, name: "1080p", hint: "Recomendado" },
-  { short: 2160, name: "4K", hint: "Máxima" },
+  { short: 720, name: "Pequeño", hint: "720p · pesa poco" },
+  { short: 1080, name: "Recomendado", hint: "1080p · HD" },
+  { short: 2160, name: "Máximo", hint: "4K · pesa mucho" },
 ];
 const QUALITY: { value: ExportQuality; label: string }[] = [
   { value: "normal", label: "Normal (más ligero)" },
   { value: "alta", label: "Alta (recomendada)" },
   { value: "maxima", label: "Máxima (más pesado)" },
 ];
+
+const CONFETTI_COLORS = ["#3563c9", "#a2559a", "#23845a", "#e0a100", "#e8593c", "#0b7a67"];
+const CONFETTI = Array.from({ length: 28 }, (_, i) => ({
+  left: (i * 37) % 100,
+  color: CONFETTI_COLORS[i % CONFETTI_COLORS.length],
+  delay: (i % 7) * 0.12,
+  duration: 1.4 + (i % 5) * 0.25,
+}));
 
 // Mismo redondeo a número par que aplica el codificador.
 const even = (n: number) => Math.max(2, Math.round(n / 2) * 2);
@@ -93,9 +101,9 @@ export function ExportDialog({ onClose }: { onClose(): void }) {
 
   return (
     <div className="modal-back" onClick={progress ? undefined : onClose}>
-      <div className="modal" onClick={(e) => e.stopPropagation()} role="dialog" aria-label="Exportar">
+      <div className="modal" onClick={(e) => e.stopPropagation()} role="dialog" aria-label="Exportar video">
         <div className="modal-head">
-          <h2>{saved ? "Video exportado" : "Exportar"}</h2>
+          <h2>{saved ? "¡Tu video está listo!" : "Exportar video"}</h2>
           {!progress && (
             <button className="ghost" onClick={onClose} aria-label="Cerrar">
               <Icon name="close" />
@@ -105,15 +113,27 @@ export function ExportDialog({ onClose }: { onClose(): void }) {
 
         {saved ? (
           <>
+            {/* Un pequeño festejo al terminar. */}
+            <div className="confetti" aria-hidden="true">
+              {CONFETTI.map((c, i) => (
+                <span key={i} style={{ left: `${c.left}%`, background: c.color, animationDelay: `${c.delay}s`, animationDuration: `${c.duration}s` }} />
+              ))}
+            </div>
+            <div className="celebrate">
+              <Icon name="check" size={34} />
+            </div>
             <p className="done">
-              <Icon name="check" /> {saved}
+              <Icon name="check" /> Se guardó en tu equipo. Ya puedes verlo o compartirlo.
             </p>
+            <p className="muted small">{saved}</p>
             <div className="row-end">
               <button className="primary" onClick={onClose}>Cerrar</button>
             </div>
           </>
         ) : (
           <>
+            <p className="lead-muted">Tu video se guardará como un archivo que puedes ver y compartir. Sin marca de agua.</p>
+            <span className="muted small">Calidad de imagen</span>
             <div className="segmented">
               {SIZES.map((s) => (
                 <button key={s.short} className={short === s.short ? "on" : ""} onClick={() => setShort(s.short)} disabled={!!progress}>
@@ -122,34 +142,32 @@ export function ExportDialog({ onClose }: { onClose(): void }) {
                 </button>
               ))}
             </div>
-            <p className="muted small">
-              MP4 {chosen === "hevc" ? "HEVC" : "H.264"} · {outW}×{outH} · {fps} fps · sin marca de agua
-            </p>
-            {hevc && (
-              <div className="segmented">
-                <button className={codec === "avc" ? "on" : ""} onClick={() => setCodec("avc")} disabled={!!progress}>
-                  <b>Compatible</b>
-                  <small>Se ve en todos lados</small>
-                </button>
-                <button className={codec === "hevc" ? "on" : ""} onClick={() => setCodec("hevc")} disabled={!!progress}>
-                  <b>Ligero</b>
-                  <small>Mitad de peso</small>
-                </button>
-              </div>
-            )}
-            {chosen === "hevc" && (
-              <p className="small" style={{ color: "#e8b04a", margin: 0 }}>
-                Algunos reproductores (como el de Windows sin la extensión HEVC) no muestran la imagen de este formato. Si vas a compartirlo, usa Compatible.
-              </p>
-            )}
             {upscales && (
-              <p className="small" style={{ color: "#e8b04a", margin: 0 }}>
-                Tus videos son más pequeños que esta resolución: el archivo pesará más sin verse mejor.
+              <p className="small warn">
+                Tus videos son más pequeños que esta calidad: el archivo pesará más sin verse mejor.
               </p>
             )}
 
             <details>
               <summary>Avanzado</summary>
+              <p className="muted small">
+                MP4 {chosen === "hevc" ? "HEVC" : "H.264"} · {outW}×{outH} · {fps} fps
+              </p>
+              {hevc && (
+                <div className="stack">
+                  <span>Formato del archivo</span>
+                  <div className="segmented">
+                    <button className={codec === "avc" ? "on" : ""} onClick={() => setCodec("avc")} disabled={!!progress}>
+                      <b>Compatible</b>
+                      <small>Se ve en todos lados</small>
+                    </button>
+                    <button className={codec === "hevc" ? "on" : ""} onClick={() => setCodec("hevc")} disabled={!!progress}>
+                      <b>Ligero</b>
+                      <small>Mitad de peso</small>
+                    </button>
+                  </div>
+                </div>
+              )}
               <label className="stack">
                 <span>Fotogramas por segundo</span>
                 <select value={fps} onChange={(e) => setFps(Number(e.target.value))} disabled={!!progress}>
@@ -167,6 +185,11 @@ export function ExportDialog({ onClose }: { onClose(): void }) {
                 </select>
               </label>
             </details>
+            {chosen === "hevc" && (
+              <p className="small warn">
+                Elegiste el formato Ligero (HEVC): algunos reproductores, como el de Windows sin la extensión HEVC, no muestran la imagen. Si vas a compartirlo, usa Compatible.
+              </p>
+            )}
 
             {progress && (
               <div className="progress" aria-label={progress.stage}>
@@ -179,8 +202,8 @@ export function ExportDialog({ onClose }: { onClose(): void }) {
               {progress ? (
                 <button onClick={() => abort.current?.abort()}>Cancelar</button>
               ) : (
-                <button className="primary" onClick={run}>
-                  <Icon name="export" /> Exportar
+                <button className="primary big" onClick={run}>
+                  <Icon name="export" /> Guardar video
                 </button>
               )}
             </div>
