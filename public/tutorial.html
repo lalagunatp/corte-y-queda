@@ -1,9 +1,13 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Tutorial de Corte y Queda</title>
-<meta name="claude:viewport-fit-sides" content="cover">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600&family=Inter:wght@400;500;600&display=swap">
 <style>
-/* Diseño: la paleta y los colores por función de la propia app; un mapa de la pantalla arriba y una ficha por función debajo. */
+/* Diseño: la paleta clara y los colores por función de la propia app; un mapa de la pantalla arriba y una ficha por función debajo. */
 :root {
   --bg: #f3f5fa;
   --surface: #ffffff;
@@ -23,22 +27,8 @@
   --display: "Fredoka", "Trebuchet MS", system-ui, sans-serif;
   --body: Inter, "Segoe UI", system-ui, -apple-system, sans-serif;
 }
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) {
-    --bg: #12161f; --surface: #1b2130; --surface-2: #252c3d; --line: #323a4e;
-    --text: #eef1f7; --text-2: #c9d0dd; --muted: #9aa4b8; --accent: #3ecfb2; --accent-soft: #3ecfb222;
-    --c-media: #7ea2f0; --c-edit: #3ecfb2; --c-text: #df8fd5; --c-subs: #f0a35a; --c-voice: #a993f2; --c-export: #3ecfb2;
-    color-scheme: dark;
-  }
-}
-:root[data-theme="dark"] {
-  --bg: #12161f; --surface: #1b2130; --surface-2: #252c3d; --line: #323a4e;
-  --text: #eef1f7; --text-2: #c9d0dd; --muted: #9aa4b8; --accent: #3ecfb2; --accent-soft: #3ecfb222;
-  --c-media: #7ea2f0; --c-edit: #3ecfb2; --c-text: #df8fd5; --c-subs: #f0a35a; --c-voice: #a993f2; --c-export: #3ecfb2;
-  color-scheme: dark;
-}
-
-body { background: var(--bg); color: var(--text); font-family: var(--body); font-size: 16px; line-height: 1.6; }
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--text); font-family: var(--body); font-size: 16px; line-height: 1.6; }
 .wrap { max-width: 920px; margin: 0 auto; padding-block: 32px 64px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); display: grid; gap: 40px; }
 h1, h2, h3 { font-family: var(--display); font-weight: 600; text-wrap: balance; line-height: 1.2; margin: 0; }
 h1 { font-size: clamp(2rem, 5vw, 2.8rem); }
@@ -96,7 +86,8 @@ th { font-weight: 600; color: var(--muted); font-size: 0.85rem; text-transform: 
 tr:last-child td { border-bottom: 0; }
 footer { color: var(--muted); font-size: 0.9rem; }
 </style>
-
+</head>
+<body>
 <div class="wrap">
   <header>
     <span class="eyebrow">Corte y Queda · guía rápida</span>
@@ -280,3 +271,5 @@ footer { color: var(--muted); font-size: 0.9rem; }
 
   <footer>Corte y Queda es gratis, sin cuenta y sin marca de agua. Tus archivos se quedan en tu equipo.</footer>
 </div>
+</body>
+</html>
