@@ -48,6 +48,8 @@ function Waveform({ clip, width, height }: { clip: MediaClip; width: number; hei
 
 function trackAccepts(track: Track, clip: Clip, assetKind: string | undefined): boolean {
   if (clip.type === "text") return track.kind === "text";
+  // Un video también entra en una fila de sonido: ahí solo se oye.
+  if (assetKind === "video") return track.kind !== "text";
   return assetKind === "audio" ? track.kind === "audio" : track.kind === "video";
 }
 
@@ -313,15 +315,17 @@ export function Timeline() {
                   .filter((c) => c.trackId === t.id)
                   .map((c) => {
                     const asset = c.type === "media" ? assets.get(c.assetId) : undefined;
+                    // Un video en una fila de sonido se muestra como sonido: onda y sin miniatura.
+                    const look = c.type === "text" ? "text" : t.kind === "audio" ? "audio" : asset?.kind;
                     const w = c.duration * zoom;
                     return (
                       <div
                         key={c.id}
-                        className={`clip ${c.type === "text" ? "text" : asset?.kind} ${selected.includes(c.id) ? "selected" : ""}`}
+                        className={`clip ${look} ${selected.includes(c.id) ? "selected" : ""}`}
                         style={{
                           left: c.start * zoom,
                           width: w,
-                          backgroundImage: asset?.thumbnail ? `url(${asset.thumbnail})` : undefined,
+                          backgroundImage: asset?.thumbnail && look !== "audio" ? `url(${asset.thumbnail})` : undefined,
                         }}
                         onPointerDown={(e) => startDrag(e, c, "move")}
                         onDoubleClick={() => (t.role === "subtitles" ? useUi.getState().editSubtitle(c.id) : useUi.getState().setSheet("edit"))}

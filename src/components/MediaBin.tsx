@@ -34,9 +34,9 @@ export function MediaBin() {
   const [over, setOver] = useState(false);
   const [freeMusic, setFreeMusic] = useState(false);
 
-  const add = (id: string) => {
-    addClip(id);
-    useEditor.getState().setStatus("Añadido a la línea de tiempo");
+  const add = (id: string, audioOnly = false) => {
+    addClip(id, { audioOnly });
+    useEditor.getState().setStatus(audioOnly ? "Añadido solo el sonido, en una fila de sonido" : "Añadido a la línea de tiempo");
     useUi.getState().setSheet(null);
   };
 
@@ -69,6 +69,11 @@ export function MediaBin() {
             </div>
             <div className="name">{a.name}</div>
           </button>
+          {a.kind === "video" && (
+            <button className="asset-audio" onClick={() => add(a.id, true)} title={`Poner solo el sonido de «${a.name}», sin la imagen`}>
+              <Icon name="music" size={13} /> Solo el sonido
+            </button>
+          )}
           <button
             className="asset-remove"
             aria-label={`Quitar ${a.name}`}

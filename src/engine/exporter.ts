@@ -253,12 +253,14 @@ export async function exportMp4(p: Project, opts: ExportOptions): Promise<Export
       : { keyFrame };
 
   // Imágenes de todos los clips visibles en el fotograma i; los clips se decodifican en paralelo.
+  // Los clips de filas de sonido u ocultas no se dibujan: no hace falta decodificar su imagen.
+  const drawn = new Set(p.tracks.filter((tr) => tr.kind !== "audio" && !tr.hidden).map((tr) => tr.id));
   const gather = async (i: number) => {
     const t = i / fps;
     const sources = new Map<string, FrameSource>();
     await Promise.all(
       p.clips.map(async (c) => {
-        if (c.type !== "media" || !isActive(c, t)) return;
+        if (c.type !== "media" || !drawn.has(c.trackId) || !isActive(c, t)) return;
         const asset = assets.get(c.assetId);
         if (asset?.kind === "video") {
           const sample = await (await readerFor(c))?.next();
