@@ -108,7 +108,10 @@ interface EditorState {
 
   addAssets(a: MediaAsset[]): void;
   removeAssetFromProject(id: string): void;
-  addClipFromAsset(assetId: string, at?: { trackId?: string; start?: number }): void;
+  /** Con audioOnly (o al soltarlo en una fila de sonido) un video se pone solo como sonido. */
+  addClipFromAsset(assetId: string, at?: { trackId?: string; start?: number; audioOnly?: boolean }): void;
+  /** Pasa un clip de video a una fila de sonido (solo se oye) o lo devuelve a una de video. */
+  setAudioOnly(clipId: string, on: boolean): void;
   addText(text?: string): void;
   /** Añade líneas a la pista de subtítulos (la crea si falta); con replace sustituye las existentes. */
   addSubtitles(lines: SubtitleLine[], opts?: { replace?: boolean }): string[];
@@ -215,8 +218,13 @@ export const useEditor = create<EditorState>((set, get) => ({
     const { project, time } = get();
     const asset = project.assets.find((a) => a.id === assetId);
     if (!asset) return;
-    const kind: TrackKind = asset.kind === "audio" ? "audio" : "video";
-    let track = project.tracks.find((t) => t.id === at?.trackId && t.kind === kind) ?? project.tracks.find((t) => t.kind === kind);
+    const dropTrack = project.tracks.find((t) => t.id === at?.trackId);
+    const audioOnly = asset.kind === "video" && (at?.audioOnly || dropTrack?.kind === "audio");
+    const kind: TrackKind = asset.kind === "audio" || audioOnly ? "audio" : "video";
+    let track =
+      (dropTrack?.kind === kind ? dropTrack : undefined) ??
+      // Un video «solo audio» no va a la fila de la narración.
+      project.tracks.find((t) => t.kind === kind && !(audioOnly && t.role));
     const extraTracks: Track[] = [];
     if (!track) {
       track = { id: uid("track"), kind, name: kind === "audio" ? "Audio 1" : "Vídeo 1", muted: false, hidden: false };
@@ -249,6 +257,29 @@ export const useEditor = create<EditorState>((set, get) => ({
     };
     get().edit((p) => ({ tracks: [...p.tracks, ...extraTracks], clips: [...p.clips, clip] }));
     set({ selected: [clip.id] });
+  },
+
+  setAudioOnly: (clipId, on) => {
+    const { project } = get();
+    const clip = project.clips.find((c): c is MediaClip => c.id === clipId && c.type === "media");
+    if (!clip) return;
+    const kind: TrackKind = on ? "audio" : "video";
+    // Busca una fila de ese tipo libre en el tramo del clip; si no hay, crea una.
+    const free = (t: Track) =>
+      !project.clips.some((c) => c.trackId === t.id && c.id !== clipId && c.start < clipEnd(clip) && clipEnd(c) > clip.start);
+    let track = project.tracks.find((t) => t.kind === kind && !t.role && free(t));
+    const extra: Track[] = [];
+    if (!track) {
+      const n = project.tracks.filter((t) => t.kind === kind).length + 1;
+      track = { id: uid("track"), kind, name: on ? `Audio ${n}` : `Vídeo ${n}`, muted: false, hidden: false };
+      extra.push(track);
+    }
+    const trackId = track.id;
+    get().edit((p) => ({
+      // Igual que addTrack: las filas de sonido van abajo y las de video arriba.
+      tracks: on ? [...p.tracks, ...extra] : [...extra, ...p.tracks],
+      clips: p.clips.map((c) => (c.id === clipId ? { ...c, trackId } : c)),
+    }));
   },
 
   addText: (text = "Escribe aquí") => {

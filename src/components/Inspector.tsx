@@ -61,8 +61,12 @@ function NarrationInfo({ clip }: { clip: MediaClip }) {
 function MediaInspector({ clip }: { clip: MediaClip }) {
   const update = useEditor((s) => s.updateClip);
   const asset = useEditor((s) => s.project.assets.find((a) => a.id === clip.assetId));
+  const onAudioTrack = useEditor((s) => s.project.tracks.find((t) => t.id === clip.trackId)?.kind === "audio");
+  const setAudioOnly = useEditor((s) => s.setAudioOnly);
   const u = (patch: Partial<MediaClip>) => update(clip.id, patch);
-  const visual = asset?.kind !== "audio";
+  // Un video en una fila de sonido solo se oye: no tiene opciones de imagen.
+  const audioOnly = asset?.kind === "video" && onAudioTrack;
+  const visual = asset?.kind !== "audio" && !audioOnly;
   const audible = asset?.kind !== "image";
   const maxDuration = asset && asset.kind !== "image" ? (asset.duration - clip.inPoint) / clip.speed : 3600;
   const setSpeed = (speed: number) => {
@@ -74,8 +78,26 @@ function MediaInspector({ clip }: { clip: MediaClip }) {
   return (
     <>
       <h3 title={asset?.name}>
-        <Icon name={clip.narration ? "mic" : asset?.kind === "audio" ? "music" : asset?.kind === "image" ? "image" : "film"} /> {asset?.name ?? "Clip"}
+        <Icon name={clip.narration ? "mic" : asset?.kind === "audio" || audioOnly ? "music" : asset?.kind === "image" ? "image" : "film"} /> {asset?.name ?? "Clip"}
       </h3>
+
+      {asset?.kind === "video" && (
+        <section className="group">
+          <h4>Imagen y sonido</h4>
+          {audioOnly ? (
+            <>
+              <p className="muted small">De este video solo se oye el sonido; la imagen no sale.</p>
+              <button onClick={() => setAudioOnly(clip.id, false)} title="Pasar el clip a una fila de video">
+                <Icon name="film" /> Mostrar también la imagen
+              </button>
+            </>
+          ) : (
+            <button onClick={() => setAudioOnly(clip.id, true)} title="Pasar el clip a una fila de sonido: se oye, pero la imagen no sale">
+              <Icon name="music" /> Usar solo el audio
+            </button>
+          )}
+        </section>
+      )}
 
       {clip.narration && <NarrationInfo clip={clip} />}
 
