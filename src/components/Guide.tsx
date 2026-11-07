@@ -11,13 +11,31 @@ const STEPS: { icon: IconName; title: string; text: string }[] = [
   { icon: "export", title: "6. Guarda tu video", text: "Toca «Exportar» y tu video se guarda como un archivo que puedes compartir. Sin marca de agua y sin subir nada a internet." },
 ];
 
+/** El tutorial completo (public/tutorial.html), dentro de la app para que funcione también sin conexión. */
+function Tutorial({ onBack }: { onBack(): void }) {
+  return (
+    <div className="modal-back" onClick={onBack}>
+      <div className="modal tutorial" onClick={(e) => e.stopPropagation()} role="dialog" aria-label="Tutorial completo">
+        <div className="modal-head">
+          <button className="ghost" onClick={onBack}>
+            <Icon name="back-arrow" /> Volver a la guía
+          </button>
+        </div>
+        <iframe src={`${import.meta.env.BASE_URL}tutorial.html`} title="Tutorial de Corte y Queda" />
+      </div>
+    </div>
+  );
+}
+
 export function Guide({ onClose }: { onClose(): void }) {
   const [i, setI] = useState(0);
+  const [full, setFull] = useState(false);
   const step = STEPS[i];
   const close = () => {
     markGuideSeen();
     onClose();
   };
+  if (full) return <Tutorial onBack={() => setFull(false)} />;
   return (
     <div className="modal-back" onClick={close}>
       <div className="modal guide" onClick={(e) => e.stopPropagation()} role="dialog" aria-label="Cómo funciona">
@@ -31,6 +49,9 @@ export function Guide({ onClose }: { onClose(): void }) {
             <button key={n} className={n === i ? "on" : ""} onClick={() => setI(n)} aria-label={`Paso ${n + 1}`} />
           ))}
         </div>
+        <button className="ghost" onClick={() => setFull(true)}>
+          <Icon name="help" size={16} /> Ver el tutorial completo
+        </button>
         <div className="row-end">
           {i > 0 ? (
             <button className="ghost" onClick={() => setI(i - 1)}>Atrás</button>

@@ -1,8 +1,8 @@
 // Service worker de Corte y Queda: guarda la app para que funcione sin conexión.
 // Los recursos con hash de Vite son inmutables (caché primero); el HTML va a la red primero
 // para que una versión nueva se vea en cuanto haya conexión.
-const CACHE = "corte-y-queda-v1";
-const SHELL = ["./", "./index.html", "./manifest.webmanifest", "./icon-192.png", "./icon-512.png", "./favicon.svg"];
+const CACHE = "corte-y-queda-v2";
+const SHELL = ["./", "./index.html", "./manifest.webmanifest", "./icon-192.png", "./icon-512.png", "./favicon.svg", "./tutorial.html"];
 
 self.addEventListener("install", (event) => {
   event.waitUntil(caches.open(CACHE).then((c) => c.addAll(SHELL)).then(() => self.skipWaiting()));
