@@ -111,9 +111,16 @@ p { margin: 6px 0; line-height: 1.45; }
 .workspace { display: grid; grid-template-columns: 264px minmax(0, 1fr) 300px; min-height: 0; }
 .workspace.wide-left { grid-template-columns: 360px minmax(0, 1fr) 280px; }
 .compact .workspace { display: block; min-height: 0; }
-.leftcol { display: grid; grid-template-rows: auto minmax(0, 1fr); background: var(--surface); border-right: 1px solid var(--line); min-height: 0; }
+/* La columna de contenido no puede ser más ancha que la columna de la izquierda: si no, se mete bajo la vista previa. */
+.leftcol { display: grid; grid-template-rows: auto minmax(0, 1fr); grid-template-columns: minmax(0, 1fr); background: var(--surface); border-right: 1px solid var(--line); min-height: 0; container-type: inline-size; }
 .leftcol > .tabs { margin: 12px 14px 0; position: static; }
-.leftcol > .tabs button { min-width: 0; padding: 6px 4px; gap: 4px; white-space: nowrap; }
+.leftcol > .tabs button { min-width: 0; padding: 6px 4px; gap: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+/* En una columna angosta las tres pestañas solo caben sin icono, y los dos botones de música van uno debajo del otro. */
+@container (max-width: 300px) {
+  .leftcol > .tabs .icon { display: none; }
+  .leftcol > .tabs button { padding: 6px 1px; }
+  .leftcol .split { grid-template-columns: minmax(0, 1fr); }
+}
 .leftcol-body { overflow-y: auto; overflow-x: hidden; min-height: 0; }
 .leftcol-body > .bin { border: 0; overflow: visible; }
 .leftcol-body > .subs { padding: 4px 14px 14px; }
@@ -127,8 +134,8 @@ p { margin: 6px 0; line-height: 1.45; }
 /* ---------- Medios ---------- */
 .bin-section { display: grid; gap: 10px; margin-bottom: 18px; }
 .section-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; min-height: var(--tap); }
-.split { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
-.split button { white-space: nowrap; padding: 6px 8px; font-size: 0.95em; }
+.split { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.split button { min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding: 6px 8px; font-size: 0.95em; }
 .assets { display: grid; grid-template-columns: repeat(auto-fill, minmax(104px, 1fr)); gap: 8px; }
 .asset { position: relative; }
 .asset-main { display: block; width: 100%; padding: 0; background: transparent; text-align: left; border-radius: var(--radius); }
@@ -376,8 +383,6 @@ button.mini { min-height: 30px; min-width: 30px; padding: 0; }
 @media (max-width: 1280px) {
   .workspace { grid-template-columns: 240px minmax(0, 1fr) 280px; }
   .workspace.wide-left { grid-template-columns: 330px minmax(0, 1fr) 260px; }
-  /* En la columna angosta las tres pestañas solo caben sin icono. */
-  .workspace:not(.wide-left) .leftcol > .tabs .icon { display: none; }
 }
 @media (max-width: 1023px) {
   .tl-body { grid-template-columns: 88px minmax(0, 1fr); }
