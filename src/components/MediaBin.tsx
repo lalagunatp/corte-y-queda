@@ -46,7 +46,8 @@ export function MediaBin() {
   };
 
   const visuals = assets.filter((a) => a.kind !== "audio");
-  const sounds = assets.filter((a) => a.kind === "audio");
+  // Las narraciones se manejan en su panel; aquí solo estarían repetidas.
+  const sounds = assets.filter((a) => a.kind === "audio" && !a.generated);
 
   const grid = (list: typeof assets) => (
     <div className="assets">

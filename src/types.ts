@@ -10,6 +10,8 @@ export interface MediaAsset {
   height: number;
   /** Miniatura en data URL (vídeo e imagen). */
   thumbnail: string | null;
+  /** Audio creado por la app (narración): no se lista en Archivos y se borra cuando nada lo usa. */
+  generated?: "narration";
 }
 
 export type TrackKind = "video" | "audio" | "text";
@@ -20,8 +22,8 @@ export interface Track {
   name: string;
   muted: boolean;
   hidden: boolean;
-  /** Pista de texto dedicada a los subtítulos (la que edita el panel Subtítulos). */
-  role?: "subtitles";
+  /** Pista dedicada: la de texto de los subtítulos o la de audio de la narración. */
+  role?: "subtitles" | "narration";
 }
 
 /** Una línea de subtítulo independiente del estilo, como en un archivo SRT. */
@@ -63,6 +65,17 @@ export interface MediaClip extends ClipBase, Transform {
   saturation: number;
   /** Cadena de limpieza de voz (paso alto, paso bajo y compresor). */
   voiceClean: boolean;
+  /** Si el audio es una narración: lo necesario para volver a leerla con otra voz o texto. */
+  narration?: Narration;
+}
+
+export interface Narration {
+  text: string;
+  /** Id de la voz (ver VOICES en ai/voices.ts). */
+  voice: string;
+  speed: number;
+  /** Subtítulo que lee, en el modo «leer los subtítulos». */
+  lineId?: string;
 }
 
 export interface TextStyle {

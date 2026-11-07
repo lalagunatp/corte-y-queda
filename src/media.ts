@@ -100,6 +100,14 @@ export async function importFiles(files: Iterable<File>): Promise<{ assets: Medi
   return { assets, rejected };
 }
 
+/** Guarda un audio creado por la app (una narración) como un recurso más del proyecto. */
+export async function saveGeneratedAudio(wav: Blob, name: string, duration: number): Promise<MediaAsset> {
+  const id = uid("asset");
+  await set(blobKey(id), wav);
+  register(id, wav);
+  return { id, name, kind: "audio", duration, width: 0, height: 0, thumbnail: null, generated: "narration" };
+}
+
 /** Restaura las URL de los recursos guardados; devuelve los ids cuyo archivo ya no existe. */
 export async function restoreAssets(assets: MediaAsset[]): Promise<string[]> {
   const missing: string[] = [];

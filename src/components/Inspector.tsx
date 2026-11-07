@@ -1,3 +1,4 @@
+import { voiceById } from "../ai/voices";
 import { useEditor } from "../store";
 import type { MediaClip, TextClip } from "../types";
 import { useUi } from "../ui";
@@ -43,6 +44,20 @@ function Captions({ clip }: { clip: MediaClip }) {
   );
 }
 
+function NarrationInfo({ clip }: { clip: MediaClip }) {
+  const open = useUi((s) => s.openNarration);
+  const n = clip.narration!;
+  return (
+    <section className="group">
+      <h4>Narración · voz {voiceById(n.voice).name}</h4>
+      <p className="narr-text">«{n.text}»</p>
+      <button className="c-voice" onClick={() => open()} title="Cambiar la voz o el texto en el panel Narrar">
+        <Icon name="mic" /> Cambiar voz o texto
+      </button>
+    </section>
+  );
+}
+
 function MediaInspector({ clip }: { clip: MediaClip }) {
   const update = useEditor((s) => s.updateClip);
   const asset = useEditor((s) => s.project.assets.find((a) => a.id === clip.assetId));
@@ -59,8 +74,10 @@ function MediaInspector({ clip }: { clip: MediaClip }) {
   return (
     <>
       <h3 title={asset?.name}>
-        <Icon name={asset?.kind === "audio" ? "music" : asset?.kind === "image" ? "image" : "film"} /> {asset?.name ?? "Clip"}
+        <Icon name={clip.narration ? "mic" : asset?.kind === "audio" ? "music" : asset?.kind === "image" ? "image" : "film"} /> {asset?.name ?? "Clip"}
       </h3>
+
+      {clip.narration && <NarrationInfo clip={clip} />}
 
       {visual && (
         <section className="group">

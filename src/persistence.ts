@@ -78,8 +78,13 @@ export async function openProject(id: string): Promise<{ missing: number }> {
   const saved = await get<Project>(projectKey(id));
   if (!saved) throw new Error("No se encontró el proyecto");
   unloadAllAssets();
-  const missing = await restoreAssets(saved.assets);
-  const lost = new Set(missing);
+  // Las narraciones que se volvieron a leer dejan su audio anterior (por si se deshacía); al
+  // abrir, sin historial, ya se pueden borrar las que nada usa.
+  const used = new Set(saved.clips.map((c) => (c.type === "media" ? c.assetId : "")));
+  const unused = saved.assets.filter((a) => a.generated && !used.has(a.id));
+  for (const a of unused) await deleteAssetFile(a.id);
+  const missing = await restoreAssets(saved.assets.filter((a) => !unused.includes(a)));
+  const lost = new Set([...missing, ...unused.map((a) => a.id)]);
   // Proyectos anteriores a la pista de subtítulos dedicada: la primera pista "Subtítulos" pasa a serlo.
   const legacy = !saved.tracks.some((t) => t.role === "subtitles") && saved.tracks.find((t) => t.kind === "text" && t.name === "Subtítulos");
   useEditor.getState().loadProject({
