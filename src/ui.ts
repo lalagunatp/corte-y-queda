@@ -15,8 +15,8 @@ export function useMediaQuery(query: string): boolean {
   return matches;
 }
 
-export type Sheet = "media" | "edit" | "subtitles" | null;
-export type LeftPanel = "media" | "subtitles";
+export type Sheet = "media" | "edit" | "subtitles" | "narration" | null;
+export type LeftPanel = "media" | "subtitles" | "narration";
 
 const compact = () => window.matchMedia(COMPACT_QUERY).matches;
 
@@ -37,6 +37,8 @@ interface UiState {
   openSubtitles(sourceClipId?: string): void;
   /** Abre el panel donde se edita ese subtítulo y lo resalta en la lista. */
   editSubtitle(id: string): void;
+  /** Abre el panel Narración. */
+  openNarration(): void;
   setExporting(v: boolean): void;
   setHelp(v: boolean): void;
 }
@@ -57,6 +59,7 @@ export const useUi = create<UiState>((set) => ({
       ...(sourceClipId ? { subtitleSource: sourceClipId } : {}),
     }),
   editSubtitle: (id) => set({ left: "subtitles", sheet: compact() ? "subtitles" : null, focusSubtitle: { id, at: Date.now() } }),
+  openNarration: () => set({ left: "narration", sheet: compact() ? "narration" : null }),
   setExporting: (exporting) => set({ exporting }),
   setHelp: (help) => set({ help }),
 }));

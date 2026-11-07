@@ -16,6 +16,7 @@
   --audio: #23845a;
   --text-clip: #a2559a;
   --subs: #b45309;
+  --voice: #6d4fc4;
   --image: #a8661a;
   --danger: #c4342f;
   --danger-soft: #c4342f14;
@@ -112,6 +113,7 @@ p { margin: 6px 0; line-height: 1.45; }
 .compact .workspace { display: block; min-height: 0; }
 .leftcol { display: grid; grid-template-rows: auto minmax(0, 1fr); background: var(--surface); border-right: 1px solid var(--line); min-height: 0; }
 .leftcol > .tabs { margin: 12px 14px 0; position: static; }
+.leftcol > .tabs button { min-width: 0; padding: 6px 4px; gap: 4px; white-space: nowrap; }
 .leftcol-body { overflow-y: auto; overflow-x: hidden; min-height: 0; }
 .leftcol-body > .bin { border: 0; overflow: visible; }
 .leftcol-body > .subs { padding: 4px 14px 14px; }
@@ -250,6 +252,14 @@ p { margin: 6px 0; line-height: 1.45; }
 .sub-row.selected { background: var(--hover); }
 .sub-head { display: flex; align-items: center; gap: 4px; font-size: 0.9em; }
 .sub-index { min-height: 30px; min-width: 30px; padding: 0 6px; font-size: 0.85em; color: var(--muted); background: var(--bg); border-radius: 6px; font-variant-numeric: tabular-nums; }
+.narr-row .sub-head select { min-height: 30px; padding: 2px 6px; max-width: 150px; font-size: 0.95em; }
+.narr-text { margin: 0; padding: 2px; line-height: 1.45; }
+.narr-state { font-size: 0.85em; padding: 2px 8px; border-radius: 999px; background: var(--surface-2); color: var(--muted); white-space: nowrap; }
+.narr-state.ok { background: color-mix(in srgb, var(--voice) 12%, transparent); color: var(--voice); }
+.narr-state.stale { background: var(--warn-soft); color: var(--warn); }
+.narr-voice { display: flex; gap: 6px; }
+.narr-voice select { flex: 1; min-width: 0; }
+.narr-draft { width: 100%; resize: vertical; line-height: 1.45; }
 .sub-row textarea { border: 0; background: transparent; padding: 4px 2px; resize: none; field-sizing: content; min-height: 1.6em; }
 .sub-row textarea:focus { background: var(--bg); }
 input.time { width: 64px; padding: 2px 4px; font-size: 0.92em; font-variant-numeric: tabular-nums; background: transparent; border-color: transparent; border-radius: 6px; text-align: center; }
@@ -314,8 +324,8 @@ button.mini { min-height: 30px; min-width: 30px; padding: 0; }
 .playhead::before { content: ""; position: absolute; top: 0; left: -5px; width: 12px; height: 10px; background: var(--accent); clip-path: polygon(0 0, 100% 0, 50% 100%); }
 
 /* ---------- Navegación inferior y hojas ---------- */
-.bottomnav { display: grid; grid-template-columns: repeat(5, 1fr); background: var(--surface); border-top: 1px solid var(--line); padding-bottom: env(safe-area-inset-bottom); }
-.bottomnav button { flex-direction: column; gap: 3px; border-radius: 0; background: transparent; min-height: 60px; font-size: 0.8em; font-weight: 500; color: var(--text-2); position: relative; }
+.bottomnav { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); background: var(--surface); border-top: 1px solid var(--line); padding-bottom: env(safe-area-inset-bottom); }
+.bottomnav button { flex-direction: column; gap: 3px; border-radius: 0; background: transparent; min-height: 60px; font-size: 0.8em; padding: 6px 2px; min-width: 0; font-weight: 500; color: var(--text-2); position: relative; }
 .bottomnav button:hover:not(:disabled) { background: transparent; }
 .bottomnav button.on { color: var(--accent); background: var(--accent-soft); }
 .bottomnav button.on:hover:not(:disabled) { background: var(--accent-soft); }
@@ -362,6 +372,8 @@ button.mini { min-height: 30px; min-width: 30px; padding: 0; }
 @media (max-width: 1280px) {
   .workspace { grid-template-columns: 240px minmax(0, 1fr) 280px; }
   .workspace.wide-left { grid-template-columns: 330px minmax(0, 1fr) 260px; }
+  /* En la columna angosta las tres pestañas solo caben sin icono. */
+  .workspace:not(.wide-left) .leftcol > .tabs .icon { display: none; }
 }
 @media (max-width: 1023px) {
   .tl-body { grid-template-columns: 88px minmax(0, 1fr); }
@@ -424,11 +436,12 @@ button.ghost.project-menu-btn { background: var(--surface-2); color: var(--text)
 .c-media { --c: var(--video); }
 .c-text { --c: var(--text-clip); }
 .c-subs { --c: var(--subs); }
+.c-voice { --c: var(--voice); }
 .c-edit { --c: var(--accent); }
-.c-media .icon, .c-text .icon, .c-subs .icon, .c-edit .icon { color: var(--c); }
+.c-media .icon, .c-text .icon, .c-subs .icon, .c-voice .icon, .c-edit .icon { color: var(--c); }
 .topbar .actions > button { border: 1.5px solid color-mix(in srgb, var(--c) 35%, transparent); background: color-mix(in srgb, var(--c) 8%, var(--surface)); }
 .topbar .actions > button:hover:not(:disabled) { background: color-mix(in srgb, var(--c) 16%, var(--surface)); }
-.bottomnav button.on.c-media, .bottomnav button.on.c-text, .bottomnav button.on.c-subs, .bottomnav button.on.c-edit { color: var(--c); background: color-mix(in srgb, var(--c) 12%, transparent); }
+.bottomnav button.on.c-media, .bottomnav button.on.c-text, .bottomnav button.on.c-subs, .bottomnav button.on.c-voice, .bottomnav button.on.c-edit { color: var(--c); background: color-mix(in srgb, var(--c) 12%, transparent); }
 .tool.add { color: var(--text-clip); }
 .tool.add .icon { color: var(--text-clip); }
 

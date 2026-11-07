@@ -1,6 +1,6 @@
 import { create } from "zustand";
 import { DEFAULT_TEXT_STYLE, normalizeText, pickStyle } from "./text";
-import type { Clip, MediaAsset, MediaClip, Project, SubtitleLine, TextClip, TextStyle, Track, TrackKind } from "./types";
+import type { Clip, MediaAsset, MediaClip, Narration, Project, SubtitleLine, TextClip, TextStyle, Track, TrackKind } from "./types";
 import { clipEnd, projectDuration, uid } from "./util";
 
 type Snapshot = Pick<Project, "tracks" | "clips" | "width" | "height" | "fps" | "background" | "name">;
@@ -26,6 +26,13 @@ export function subtitleClips(p: Project): TextClip[] {
   return p.clips.filter((c): c is TextClip => c.type === "text" && c.trackId === track.id).sort((a, b) => a.start - b.start);
 }
 
+/** Clips de la pista de narración, ordenados por inicio. */
+export function narrationClips(p: Project): MediaClip[] {
+  const track = p.tracks.find((t) => t.role === "narration");
+  if (!track) return [];
+  return p.clips.filter((c): c is MediaClip => c.type === "media" && c.trackId === track.id && !!c.narration).sort((a, b) => a.start - b.start);
+}
+
 export function newProject(opts: { name?: string; width?: number; height?: number } = {}): Project {
   return {
     id: uid("project"),
@@ -43,6 +50,24 @@ export function newProject(opts: { name?: string; width?: number; height?: numbe
     assets: [],
   };
 }
+
+const narrationClipBase: Omit<MediaClip, "id" | "trackId" | "assetId" | "start" | "duration"> = {
+  type: "media",
+  inPoint: 0,
+  speed: 1,
+  volume: 1,
+  fadeIn: 0,
+  fadeOut: 0,
+  x: 0,
+  y: 0,
+  scale: 1,
+  rotation: 0,
+  opacity: 1,
+  brightness: 1,
+  contrast: 1,
+  saturation: 1,
+  voiceClean: false,
+};
 
 const snapshot = (p: Project): Snapshot => ({
   tracks: p.tracks,
@@ -87,6 +112,10 @@ interface EditorState {
   addText(text?: string): void;
   /** Añade líneas a la pista de subtítulos (la crea si falta); con replace sustituye las existentes. */
   addSubtitles(lines: SubtitleLine[], opts?: { replace?: boolean }): string[];
+  /** Pone audios de narración en su pista (la crea si falta) y devuelve los ids de los clips. */
+  addNarration(items: { start: number; asset: MediaAsset; narration: Narration }[]): string[];
+  /** Cambia el audio de una narración ya puesta (otra voz, otro texto) sin moverla. */
+  replaceNarration(clipId: string, asset: MediaAsset, narration: Narration): void;
   updateClips(ids: string[], patch: Partial<Omit<TextClip, "type">>): void;
   updateClip(id: string, patch: Partial<Omit<MediaClip, "type">> | Partial<Omit<TextClip, "type">>): void;
   deleteSelected(): void;
@@ -272,6 +301,29 @@ export const useEditor = create<EditorState>((set, get) => ({
       clips: [...p.clips.filter((c) => !removed.has(c.id)), ...created],
     }));
     return created.map((c) => c.id);
+  },
+
+  addNarration: (items) => {
+    const { project } = get();
+    const existing = project.tracks.find((t) => t.role === "narration");
+    const track: Track = existing ?? { id: uid("track"), kind: "audio", name: "Narración", muted: false, hidden: false, role: "narration" };
+    const created: MediaClip[] = items.map(({ start, asset, narration }) => ({
+      ...narrationClipBase,
+      id: uid("clip"),
+      trackId: track.id,
+      assetId: asset.id,
+      start,
+      duration: asset.duration,
+      narration,
+    }));
+    set((s) => ({ project: { ...s.project, assets: [...s.project.assets, ...items.map((i) => i.asset)] } }));
+    get().edit((p) => ({ tracks: existing ? p.tracks : [...p.tracks, track], clips: [...p.clips, ...created] }));
+    return created.map((c) => c.id);
+  },
+
+  replaceNarration: (clipId, asset, narration) => {
+    set((s) => ({ project: { ...s.project, assets: [...s.project.assets, asset] } }));
+    get().updateClip(clipId, { assetId: asset.id, duration: asset.duration, inPoint: 0, speed: 1, narration });
   },
 
   updateClip: (id, patch) =>

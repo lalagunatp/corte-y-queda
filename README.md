@@ -13,6 +13,7 @@ y sus prioridades salen de las quejas más repetidas de los usuarios de editores
 | Términos que dan licencia sobre tu contenido; subida a la nube | Sin cuenta ni servidor: los archivos y el proyecto se quedan en tu equipo (IndexedDB). |
 | Funciones distintas entre web y escritorio | Una sola base de código para las dos versiones. |
 | Subtítulos automáticos de pago o en la nube | Whisper corre en tu equipo (WebGPU o WASM). |
+| Voces de narración de pago o en la nube | Voces Piper que corren en tu equipo, sin límite de uso. |
 | Edición poco precisa | Atajos profesionales (J/K/L, S, flechas por fotograma), imán, deshacer ilimitado (200 pasos). |
 
 ## Funciones
@@ -32,6 +33,10 @@ y sus prioridades salen de las quejas más repetidas de los usuarios de editores
   `.srt` (también lee `.vtt`). Los subtítulos se graban en el MP4 exportado.
 - **Subtítulos automáticos** con Whisper local (tiny, base o small) y división en líneas legibles,
   que después se corrigen en el editor de subtítulos.
+- **Narración con varias voces** (Piper, en el equipo): una voz lee los subtítulos en su momento o el
+  texto que escribas, con otra voz por frase o por parte si hablan varios personajes. Voces de España,
+  México y Argentina, velocidad lenta/normal/rápida y opción de crear los subtítulos del texto escrito.
+  Las voces van en su propia pista de audio y se graban en el MP4; cada voz se descarga una sola vez.
 - **Limpieza de voz**: paso alto, paso bajo, realce de presencia y compresor.
 - Exportación MP4 (H.264 + AAC) con WebCodecs, de 480p a 4K.
 - Autoguardado local del proyecto y de los medios.

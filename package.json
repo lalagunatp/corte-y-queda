@@ -12,6 +12,7 @@
     "tauri": "tauri"
   },
   "dependencies": {
+    "@diffusionstudio/piper-wasm": "1.0.0",
     "@fontsource-variable/caveat": "^5.3.0",
     "@fontsource-variable/cinzel": "^5.3.0",
     "@fontsource-variable/dancing-script": "^5.3.0",
@@ -38,6 +39,7 @@
     "idb-keyval": "^6.3.0",
     "mediabunny": "^1.62.1",
     "mp4-muxer": "^5.2.2",
+    "onnxruntime-web": "1.31.0-dev.20260914-8d85527a0",
     "react": "^19.3.1",
     "react-dom": "^19.3.1",
     "zustand": "^5.0.16"

@@ -5,6 +5,7 @@ import { Home } from "./components/Home";
 import { Icon } from "./components/Icon";
 import { Inspector } from "./components/Inspector";
 import { MediaBin, importIntoProject } from "./components/MediaBin";
+import { Narration } from "./components/Narration";
 import { Preview } from "./components/Preview";
 import { ProjectSettings } from "./components/ProjectSettings";
 import { Subtitles } from "./components/Subtitles";
@@ -143,6 +144,9 @@ function Editor({ onHome }: { onHome(): Promise<void> }) {
             <button className="c-subs" onClick={() => useUi.getState().openSubtitles()} title="Escribir o crear solos los subtítulos de lo que se dice">
               <Icon name="captions" /> Subtítulos
             </button>
+            <button className="c-voice" onClick={() => useUi.getState().openNarration()} title="Que una voz lea los subtítulos o lo que escribas">
+              <Icon name="mic" /> Narrar
+            </button>
             <input
               ref={picker}
               type="file"
@@ -179,7 +183,7 @@ function Editor({ onHome }: { onHome(): Promise<void> }) {
         )}
       </header>
 
-      <main className={`workspace ${left === "subtitles" ? "wide-left" : ""}`}>
+      <main className={`workspace ${left !== "media" ? "wide-left" : ""}`}>
         {!compact && (
           <aside className="leftcol">
             <div className="tabs" role="tablist">
@@ -189,8 +193,11 @@ function Editor({ onHome }: { onHome(): Promise<void> }) {
               <button role="tab" aria-selected={left === "subtitles"} className={left === "subtitles" ? "on" : ""} onClick={() => setLeft("subtitles")}>
                 <Icon name="captions" size={16} /> Subtítulos
               </button>
+              <button role="tab" aria-selected={left === "narration"} className={left === "narration" ? "on" : ""} onClick={() => setLeft("narration")}>
+                <Icon name="mic" size={16} /> Narrar
+              </button>
             </div>
-            <div className="leftcol-body">{left === "media" ? <MediaBin /> : <Subtitles />}</div>
+            <div className="leftcol-body">{left === "media" ? <MediaBin /> : left === "subtitles" ? <Subtitles /> : <Narration />}</div>
           </aside>
         )}
         <Preview />
@@ -204,7 +211,7 @@ function Editor({ onHome }: { onHome(): Promise<void> }) {
 
       {/* En pantallas pequeñas el panel abierto ocupa el sitio de la línea de tiempo: la vista previa sigue visible. */}
       {compact && sheet ? (
-        <Dock title={sheet === "media" ? "Archivos" : sheet === "edit" ? "Editar" : "Subtítulos"} onClose={() => setSheet(null)}>
+        <Dock title={sheet === "media" ? "Archivos" : sheet === "edit" ? "Editar" : sheet === "subtitles" ? "Subtítulos" : "Narrar"} onClose={() => setSheet(null)}>
           {sheet === "media" && <MediaBin />}
           {sheet === "edit" && (
             <div className="inspector">
@@ -214,6 +221,11 @@ function Editor({ onHome }: { onHome(): Promise<void> }) {
           {sheet === "subtitles" && (
             <div className="inspector">
               <Subtitles />
+            </div>
+          )}
+          {sheet === "narration" && (
+            <div className="inspector">
+              <Narration />
             </div>
           )}
         </Dock>
@@ -234,6 +246,10 @@ function Editor({ onHome }: { onHome(): Promise<void> }) {
           <button className={`c-subs ${sheet === "subtitles" ? "on" : ""}`} onClick={() => setSheet(sheet === "subtitles" ? null : "subtitles")}>
             <Icon name="captions" size={22} />
             Subtítulos
+          </button>
+          <button className={`c-voice ${sheet === "narration" ? "on" : ""}`} onClick={() => setSheet(sheet === "narration" ? null : "narration")}>
+            <Icon name="mic" size={22} />
+            Narrar
           </button>
           <button
             className="c-text"
