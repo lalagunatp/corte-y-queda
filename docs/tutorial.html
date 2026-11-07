@@ -1,0 +1,282 @@
+<title>Tutorial de Corte y Queda</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600&family=Inter:wght@400;500;600&display=swap">
+<style>
+/* Diseño: la paleta y los colores por función de la propia app; un mapa de la pantalla arriba y una ficha por función debajo. */
+:root {
+  --bg: #f3f5fa;
+  --surface: #ffffff;
+  --surface-2: #e9edf5;
+  --line: #d3d9e4;
+  --text: #1b2130;
+  --text-2: #3a4356;
+  --muted: #566176;
+  --accent: #0b7a67;
+  --accent-soft: #0b7a671a;
+  --c-media: #3563c9;
+  --c-edit: #0b7a67;
+  --c-text: #a2559a;
+  --c-subs: #b45309;
+  --c-voice: #6d4fc4;
+  --c-export: #0b7a67;
+  --display: "Fredoka", "Trebuchet MS", system-ui, sans-serif;
+  --body: Inter, "Segoe UI", system-ui, -apple-system, sans-serif;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #12161f; --surface: #1b2130; --surface-2: #252c3d; --line: #323a4e;
+    --text: #eef1f7; --text-2: #c9d0dd; --muted: #9aa4b8; --accent: #3ecfb2; --accent-soft: #3ecfb222;
+    --c-media: #7ea2f0; --c-edit: #3ecfb2; --c-text: #df8fd5; --c-subs: #f0a35a; --c-voice: #a993f2; --c-export: #3ecfb2;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #12161f; --surface: #1b2130; --surface-2: #252c3d; --line: #323a4e;
+  --text: #eef1f7; --text-2: #c9d0dd; --muted: #9aa4b8; --accent: #3ecfb2; --accent-soft: #3ecfb222;
+  --c-media: #7ea2f0; --c-edit: #3ecfb2; --c-text: #df8fd5; --c-subs: #f0a35a; --c-voice: #a993f2; --c-export: #3ecfb2;
+  color-scheme: dark;
+}
+
+body { background: var(--bg); color: var(--text); font-family: var(--body); font-size: 16px; line-height: 1.6; }
+.wrap { max-width: 920px; margin: 0 auto; padding-block: 32px 64px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); display: grid; gap: 40px; }
+h1, h2, h3 { font-family: var(--display); font-weight: 600; text-wrap: balance; line-height: 1.2; margin: 0; }
+h1 { font-size: clamp(2rem, 5vw, 2.8rem); }
+h2 { font-size: 1.6rem; }
+h3 { font-size: 1.2rem; }
+p { margin: 0; }
+.lead { font-size: 1.1rem; color: var(--text-2); max-width: 62ch; }
+header { display: grid; gap: 12px; }
+.eyebrow { font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--accent); font-weight: 600; }
+
+/* Mapa de la pantalla */
+.map-section { display: grid; gap: 16px; }
+.screens { display: grid; grid-template-columns: minmax(0, 3fr) minmax(0, 1fr); gap: 20px; align-items: start; }
+@media (max-width: 700px) { .screens { grid-template-columns: minmax(0, 1fr); } }
+.screen { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 10px; display: grid; gap: 6px; font-size: 0.78rem; }
+.screen figcaption { font-size: 0.85rem; color: var(--muted); font-weight: 500; }
+.zone { border-radius: 8px; padding: 8px; display: grid; place-content: center; text-align: center; gap: 2px; font-weight: 500; line-height: 1.3; background: var(--surface-2); color: var(--text-2); }
+.zone b { color: var(--text); }
+.zone.media { background: color-mix(in srgb, var(--c-media) 14%, transparent); }
+.zone.edit { background: color-mix(in srgb, var(--c-edit) 14%, transparent); }
+.zone.tl { background: color-mix(in srgb, var(--c-subs) 12%, transparent); }
+.desk { display: grid; grid-template-columns: 1fr 2.2fr 1fr; grid-template-rows: auto 120px 70px; gap: 6px; }
+.desk .top { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: 4px; justify-content: flex-end; align-items: center; background: var(--surface-2); border-radius: 8px; padding: 6px; }
+.desk .top span:first-child { margin-right: auto; }
+.desk .tl { grid-column: 1 / -1; }
+.chip { display: inline-flex; align-items: center; gap: 4px; padding: 1px 8px; border-radius: 999px; font-weight: 600; font-size: 0.9em; white-space: nowrap; background: color-mix(in srgb, var(--c) 14%, transparent); color: var(--c); }
+.chip.media { --c: var(--c-media); } .chip.edit { --c: var(--c-edit); } .chip.text { --c: var(--c-text); }
+.chip.subs { --c: var(--c-subs); } .chip.voice { --c: var(--c-voice); } .chip.export { --c: var(--c-export); }
+.chip.plain { --c: var(--text-2); }
+.phone { max-width: 200px; justify-self: center; width: 100%; display: grid; grid-template-rows: 24px 90px 70px auto; gap: 6px; }
+.phone .nav { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 3px; }
+.phone .nav span { text-align: center; padding: 3px 0; border-radius: 6px; font-size: 0.72rem; font-weight: 600; color: var(--c); background: color-mix(in srgb, var(--c) 12%, transparent); }
+
+/* Fichas */
+.toc { display: flex; flex-wrap: wrap; gap: 8px; }
+.toc a { text-decoration: none; padding: 6px 12px; border-radius: 999px; background: var(--surface); border: 1px solid var(--line); color: var(--text); font-weight: 500; font-size: 0.92rem; }
+.toc a:hover, .toc a:focus-visible { border-color: var(--accent); outline: none; }
+.guides { display: grid; gap: 16px; }
+.guide { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 20px; display: grid; gap: 12px; min-width: 0; scroll-margin-top: 16px; }
+.guide-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 8px 12px; }
+.where { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 4px 10px; font-size: 0.92rem; background: var(--bg); border-radius: 10px; padding: 10px 12px; }
+.where dt { color: var(--muted); font-weight: 600; }
+.where dd { margin: 0; }
+ol, ul { margin: 0; padding-left: 1.3em; display: grid; gap: 6px; }
+.tip { font-size: 0.92rem; color: var(--text-2); border-left: 3px solid var(--accent); padding-left: 10px; }
+kbd { font-family: var(--body); font-size: 0.85em; font-weight: 600; padding: 1px 6px; border-radius: 5px; border: 1px solid var(--line); border-bottom-width: 2px; background: var(--surface-2); white-space: nowrap; }
+.btn { font-weight: 600; white-space: nowrap; }
+.new { font-size: 0.75rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; color: var(--c-voice); }
+
+/* Atajos */
+.keys-wrap { overflow-x: auto; }
+table { border-collapse: collapse; width: 100%; background: var(--surface); border: 1px solid var(--line); border-radius: 14px; overflow: hidden; font-size: 0.95rem; }
+th, td { text-align: left; padding: 10px 14px; border-bottom: 1px solid var(--line); vertical-align: top; }
+th { font-weight: 600; color: var(--muted); font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.05em; }
+tr:last-child td { border-bottom: 0; }
+footer { color: var(--muted); font-size: 0.9rem; }
+</style>
+
+<div class="wrap">
+  <header>
+    <span class="eyebrow">Corte y Queda · guía rápida</span>
+    <h1>Dónde está cada cosa</h1>
+    <p class="lead">Un recorrido corto por el editor: dónde se toca para hacer cada cosa, en la computadora y en el celular. Todo se hace en tu equipo y nada se sube a internet.</p>
+  </header>
+
+  <section class="map-section" aria-labelledby="mapa">
+    <h2 id="mapa">El mapa de la pantalla</h2>
+    <div class="screens">
+      <figure class="screen" style="margin:0">
+        <figcaption>En la computadora</figcaption>
+        <div class="desk">
+          <div class="top">
+            <span><b>← Mis videos</b> · nombre</span>
+            <span class="chip media">Importar</span><span class="chip text">Texto</span><span class="chip subs">Subtítulos</span><span class="chip voice">Narrar</span><span class="chip plain">⚙ ?</span><span class="chip export">Exportar</span>
+          </div>
+          <div class="zone media"><b>Columna izquierda</b>Archivos · Subtítulos · Narrar</div>
+          <div class="zone"><b>Vista previa</b>▶ reproducir · Deshacer</div>
+          <div class="zone edit"><b>Editar</b>lo que tengas tocado</div>
+          <div class="zone tl"><b>Línea de tiempo</b>las filas con tus clips y la línea verde</div>
+        </div>
+      </figure>
+      <figure class="screen" style="margin:0">
+        <figcaption>En el celular</figcaption>
+        <div class="phone">
+          <div class="zone">Arriba: ← · ⚙ · ?</div>
+          <div class="zone"><b>Vista previa</b></div>
+          <div class="zone tl"><b>Línea de tiempo</b>o el panel abierto</div>
+          <div class="nav">
+            <span style="--c:var(--c-media)">Archivos</span><span style="--c:var(--c-edit)">Editar</span><span style="--c:var(--c-subs)">Subtítulos</span>
+            <span style="--c:var(--c-voice)">Narrar</span><span style="--c:var(--c-text)">Texto</span><span style="--c:var(--c-export)">Exportar</span>
+          </div>
+        </div>
+      </figure>
+    </div>
+    <p class="tip">La <b>línea verde</b> de la línea de tiempo marca el momento en el que estás. Cortar, añadir texto y narrar ocurren justo ahí.</p>
+  </section>
+
+  <nav class="toc" aria-label="Funciones">
+    <a href="#crear">Crear un video</a>
+    <a href="#archivos">Añadir archivos y música</a>
+    <a href="#linea">Ordenar y cortar</a>
+    <a href="#editar">Editar un clip</a>
+    <a href="#texto">Poner texto</a>
+    <a href="#subtitulos">Subtítulos</a>
+    <a href="#narrar">Narrar con voces</a>
+    <a href="#ajustes">Ajustes del video</a>
+    <a href="#exportar">Exportar</a>
+    <a href="#guardar">Guardar e instalar</a>
+    <a href="#atajos">Atajos</a>
+  </nav>
+
+  <div class="guides">
+    <article class="guide" id="crear">
+      <div class="guide-head"><h3>Crear o abrir un video</h3></div>
+      <dl class="where"><dt>Dónde</dt><dd>Pantalla <b>Mis videos</b> (al abrir la app, o con <span class="btn">← Mis videos</span>)</dd></dl>
+      <ol>
+        <li>Toca <span class="btn">Crear un video nuevo</span>.</li>
+        <li>Escribe cómo se llama y elige la forma: <b>Horizontal</b> (YouTube), <b>Vertical</b> (TikTok, Reels, Shorts), <b>Cuadrado</b> o <b>Retrato</b>.</li>
+        <li>Toca <span class="btn">Crear video</span>. Para volver a uno que ya tienes, toca su miniatura.</li>
+      </ol>
+      <p class="tip">Con el botón <b>⋯</b> de cada video puedes <b>Cambiar nombre</b>, <b>Duplicar</b> o <b>Eliminar</b>.</p>
+    </article>
+
+    <article class="guide" id="archivos">
+      <div class="guide-head"><h3>Añadir videos, fotos y música</h3><span class="chip media">Importar · Archivos</span></div>
+      <dl class="where"><dt>PC</dt><dd>Botón <span class="btn">Importar</span> arriba, o la pestaña <b>Archivos</b> de la izquierda</dd><dt>Celular</dt><dd><b>Archivos</b> en la barra de abajo</dd></dl>
+      <ol>
+        <li>Elige tus archivos, o arrástralos a la ventana.</li>
+        <li>Toca un archivo de la lista para ponerlo en la línea de tiempo (también puedes arrastrarlo a una fila).</li>
+        <li>Para la música de fondo: <span class="btn">Mi música</span> abre una canción de tu equipo, y <span class="btn">Música gratis</span> te lleva a bibliotecas gratuitas, con notas sobre sus licencias.</li>
+      </ol>
+    </article>
+
+    <article class="guide" id="linea">
+      <div class="guide-head"><h3>Ordenar, cortar y borrar</h3><span class="chip plain">Línea de tiempo</span></div>
+      <dl class="where"><dt>Dónde</dt><dd>La línea de tiempo, abajo (en el celular se ve cuando no hay un panel abierto)</dd></dl>
+      <ul>
+        <li><b>Mover:</b> arrastra el clip. <b>Acortar:</b> tira de uno de sus bordes.</li>
+        <li><b>Cortar en dos:</b> pon la línea verde donde quieras y toca <span class="btn">Cortar</span> (o <kbd>S</kbd>).</li>
+        <li><b>Duplicar</b> y <b>Eliminar</b> actúan sobre el clip tocado.</li>
+        <li>Las lupas <b>−</b> y <b>+</b> muestran más tiempo o más detalle.</li>
+        <li>El botón <b>⋯</b> añade filas de video, sonido o texto, y activa el <b>Imán</b>, que pega los clips al moverlos.</li>
+        <li>En cada fila: el <b>ojo</b> la oculta, el <b>altavoz</b> la silencia y la <b>×</b> la borra.</li>
+      </ul>
+      <p class="tip">Para hacer una transición, pon dos clips encimados en la misma fila y usa «Aparecer» y «Desaparecer poco a poco».</p>
+    </article>
+
+    <article class="guide" id="editar">
+      <div class="guide-head"><h3>Editar un clip</h3><span class="chip edit">Editar</span></div>
+      <dl class="where"><dt>PC</dt><dd>Toca el clip: sus opciones salen en la columna derecha</dd><dt>Celular</dt><dd>Toca el clip y luego <b>Editar</b> abajo (o tócalo dos veces)</dd></dl>
+      <ul>
+        <li><b>Filtro:</b> Original, Claro, Vivo, Suave, Contraste o Blanco y negro.</li>
+        <li><b>Velocidad:</b> Lenta, Normal, Rápida o Doble.</li>
+        <li><b>Sonido:</b> volumen y <b>Mejorar la voz (menos ruido)</b>.</li>
+        <li><b>Aparecer y desaparecer:</b> fundidos al principio y al final.</li>
+        <li><b>Girar y hacer zoom</b>; en <b>Avanzado</b> están la posición, la opacidad, el brillo, el contraste y la saturación.</li>
+      </ul>
+      <p class="tip">¿Te equivocaste? <span class="btn">Deshacer</span> está debajo de la vista previa (<kbd>Ctrl</kbd>+<kbd>Z</kbd>). Guarda hasta 200 pasos.</p>
+    </article>
+
+    <article class="guide" id="texto">
+      <div class="guide-head"><h3>Poner texto encima del video</h3><span class="chip text">Texto</span></div>
+      <dl class="where"><dt>PC</dt><dd>Botón <span class="btn">Texto</span> arriba, <span class="btn">Añadir texto</span> en la línea de tiempo, o <kbd>T</kbd></dd><dt>Celular</dt><dd><b>Texto</b> en la barra de abajo</dd></dl>
+      <ol>
+        <li>El texto aparece en la línea verde y dura 3 segundos; tira de sus bordes para cambiarlo.</li>
+        <li>En <b>Editar</b> escribe la frase y elige un <b>estilo listo</b>, o cambia el tipo de letra, el color, la sombra y la alineación.</li>
+        <li>Para moverlo usa <b>Posición</b> (Arriba, Centro, Abajo). Si tocas un texto en la vista previa, se abre para editarlo.</li>
+      </ol>
+    </article>
+
+    <article class="guide" id="subtitulos">
+      <div class="guide-head"><h3>Subtítulos</h3><span class="chip subs">Subtítulos</span></div>
+      <dl class="where"><dt>PC</dt><dd>Botón <span class="btn">Subtítulos</span> arriba o la pestaña de la izquierda</dd><dt>Celular</dt><dd><b>Subtítulos</b> en la barra de abajo</dd></dl>
+      <ol>
+        <li><span class="btn">Crear automáticamente</span>: elige el video, el idioma y la calidad (Rápida, Normal o Precisa). La app escucha y escribe sola lo que se dice.</li>
+        <li>Revisa la lista: toca el número de una frase para escucharla y corrige el texto si hace falta.</li>
+        <li><span class="btn">Añadir a mano</span> escribe un subtítulo en la línea verde. <span class="btn">Estilo</span> cambia el tamaño, el color y la posición de todos a la vez.</li>
+        <li>El botón <b>⋯</b> abre o guarda archivos <b>.srt</b> (también lee <b>.vtt</b>).</li>
+      </ol>
+      <p class="tip">La primera vez se descarga el reconocimiento de voz (40 a 480 MB, según la calidad). Solo ocurre una vez.</p>
+    </article>
+
+    <article class="guide" id="narrar">
+      <div class="guide-head"><h3>Narrar con varias voces</h3><span class="chip voice">Narrar</span><span class="new">Nuevo</span></div>
+      <dl class="where"><dt>PC</dt><dd>Botón <span class="btn">Narrar</span> arriba o la pestaña de la izquierda</dd><dt>Celular</dt><dd><b>Narrar</b> en la barra de abajo</dd></dl>
+      <ol>
+        <li>Elige una voz (de España, México o Argentina) y toca <span class="btn">Probar</span> para oírla. Luego elige la velocidad: Lenta, Normal o Rápida.</li>
+        <li><b>Leer los subtítulos:</b> toca <span class="btn">Leer los subtítulos</span> y cada frase se lee justo cuando aparece. En la lista puedes darle otra voz a cada frase, como si hablaran varias personas.</li>
+        <li><b>Escribir lo que dice:</b> escribe el texto y toca <span class="btn">Añadir en la línea verde</span>. Con «Poner también los subtítulos» se escriben solos.</li>
+      </ol>
+      <p class="tip">Las voces van en la fila <b>Narración</b> y se graban en el video exportado. Silencia esa fila para verlo sin voz. Cada voz se descarga una sola vez (de 28 a 114 MB).</p>
+    </article>
+
+    <article class="guide" id="ajustes">
+      <div class="guide-head"><h3>Ajustes del video</h3><span class="chip plain">⚙</span></div>
+      <dl class="where"><dt>Dónde</dt><dd>El engranaje <b>⚙</b> arriba, o toca el nombre del video</dd></dl>
+      <p>Aquí cambias el <b>nombre</b>, la <b>forma del video</b> y el <b>color de fondo</b> (se ve donde no hay imagen). En <b>Avanzado</b> están los fotogramas por segundo.</p>
+    </article>
+
+    <article class="guide" id="exportar">
+      <div class="guide-head"><h3>Guardar tu video terminado</h3><span class="chip export">Exportar</span></div>
+      <dl class="where"><dt>Dónde</dt><dd>Botón <span class="btn">Exportar</span> arriba a la derecha (en el celular, el último botón de abajo)</dd></dl>
+      <ol>
+        <li>Elige la <b>calidad</b>: Normal (más ligero), Alta (recomendada) o Máxima.</li>
+        <li>Elige el <b>formato del archivo</b>: <b>Compatible</b> se ve en todos lados; <b>Ligero</b> pesa la mitad, pero no se reproduce en todos los equipos.</li>
+        <li>Toca exportar y espera: se crea un MP4 sin marca de agua y sin subir nada a internet.</li>
+      </ol>
+    </article>
+
+    <article class="guide" id="guardar">
+      <div class="guide-head"><h3>Guardar, instalar y pedir ayuda</h3></div>
+      <ul>
+        <li>El proyecto <b>se guarda solo</b> en tu equipo; arriba ves «Guardado». Si quieres, puedes guardar ya con <kbd>Ctrl</kbd>+<kbd>S</kbd>.</li>
+        <li>En Chrome o Edge aparece un botón para <b>instalar la app</b>. Una vez instalada, funciona sin conexión.</li>
+        <li>El botón <b>?</b> vuelve a mostrar la guía de bienvenida.</li>
+      </ul>
+    </article>
+  </div>
+
+  <section aria-labelledby="atajos" style="display:grid;gap:16px">
+    <h2 id="atajos">Atajos de teclado</h2>
+    <div class="keys-wrap">
+      <table>
+        <thead><tr><th>Tecla</th><th>Qué hace</th></tr></thead>
+        <tbody>
+          <tr><td><kbd>Espacio</kbd> / <kbd>K</kbd> / <kbd>L</kbd></td><td>Reproducir o pausar / pausar / reproducir</td></tr>
+          <tr><td><kbd>J</kbd></td><td>Retroceder 5 segundos</td></tr>
+          <tr><td><kbd>←</kbd> / <kbd>→</kbd></td><td>Fotograma anterior / siguiente (con <kbd>Mayús</kbd>: 1 segundo)</td></tr>
+          <tr><td><kbd>S</kbd></td><td>Cortar en la línea verde</td></tr>
+          <tr><td><kbd>Supr</kbd></td><td>Eliminar lo tocado</td></tr>
+          <tr><td><kbd>Ctrl</kbd>+<kbd>D</kbd></td><td>Duplicar</td></tr>
+          <tr><td><kbd>Ctrl</kbd>+<kbd>Z</kbd> / <kbd>Ctrl</kbd>+<kbd>Y</kbd></td><td>Deshacer / rehacer</td></tr>
+          <tr><td><kbd>T</kbd></td><td>Añadir texto</td></tr>
+          <tr><td><kbd>+</kbd> / <kbd>−</kbd></td><td>Acercar / alejar la línea de tiempo</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <footer>Corte y Queda es gratis, sin cuenta y sin marca de agua. Tus archivos se quedan en tu equipo.</footer>
+</div>
