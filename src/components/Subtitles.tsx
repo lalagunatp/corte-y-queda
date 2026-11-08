@@ -9,6 +9,7 @@ import { clipEnd } from "../util";
 import { Icon } from "./Icon";
 import { Segmented, Slider } from "./controls";
 import { TextStyleEditor } from "./TextStyleEditor";
+import { TranslateSubtitles } from "./TranslateSubtitles";
 import { engineRef } from "./Preview";
 
 const LANGUAGES: [string, string][] = [
@@ -300,8 +301,9 @@ export function Subtitles() {
   const lines = subtitleClips(project);
   const s = useEditor.getState;
   const [focusId, setFocusId] = useState<string | null>(null);
-  const [open, setOpen] = useState<"generate" | "style" | null>(lines.length ? null : "generate");
+  const [open, setOpen] = useState<"generate" | "style" | "translate" | null>(lines.length ? null : "generate");
   const [review, setReview] = useState<number | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
   const fileInput = useRef<HTMLInputElement>(null);
   const list = useRef<HTMLDivElement>(null);
 
@@ -385,6 +387,9 @@ export function Subtitles() {
         <button className={open === "style" ? "on" : ""} onClick={() => setOpen(open === "style" ? null : "style")} disabled={!lines.length} title="Cambiar la letra, el color y el tamaño de todos los subtítulos">
           <Icon name="type" /> Estilo
         </button>
+        <button className={open === "translate" ? "on" : ""} onClick={() => setOpen(open === "translate" ? null : "translate")} disabled={!lines.length} title="Pasar todos los subtítulos a otro idioma">
+          <Icon name="captions" /> Traducir
+        </button>
         <details className="menu">
           <summary className="tool" aria-label="Archivo de subtítulos" title="Abrir o guardar un archivo de subtítulos (.srt)">
             <Icon name="more" />
@@ -421,6 +426,24 @@ export function Subtitles() {
         />
       )}
       {open === "style" && <Style lines={lines} />}
+      {open === "translate" && (
+        <TranslateSubtitles
+          lines={lines}
+          onDone={(message) => {
+            setOpen(null);
+            setNotice(message);
+          }}
+        />
+      )}
+      {notice && (
+        <div className="notice">
+          <Icon name="check" />
+          <p>{notice}</p>
+          <button className="ghost square" onClick={() => setNotice(null)} aria-label="Cerrar aviso">
+            <Icon name="close" size={14} />
+          </button>
+        </div>
+      )}
 
       {review != null && lines.length > 0 && (
         <div className="notice">

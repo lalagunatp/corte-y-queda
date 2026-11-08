@@ -24,6 +24,8 @@ export interface Track {
   hidden: boolean;
   /** Pista dedicada: la de texto de los subtítulos o la de audio de la narración. */
   role?: "subtitles" | "narration";
+  /** Idioma de los subtítulos de esta pista (código de dos letras), si se conoce. */
+  lang?: string;
 }
 
 /** Una línea de subtítulo independiente del estilo, como en un archivo SRT. */

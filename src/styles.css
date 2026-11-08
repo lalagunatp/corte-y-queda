@@ -480,3 +480,8 @@ button.ghost.project-menu-btn { background: var(--surface-2); color: var(--text)
 .cut-list li:last-child { border-bottom: 0; }
 .cut-list li.on { color: var(--text); }
 .cut-list .grow { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* Traducir subtítulos */
+.translate .inline { gap: 8px; align-items: flex-end; }
+.translate .inline .stack { flex: 1; min-width: 0; }
+.translate .check { padding-inline: 0; }
