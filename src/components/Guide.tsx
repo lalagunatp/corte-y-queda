@@ -5,7 +5,7 @@ import { Icon, type IconName } from "./Icon";
 const STEPS: { icon: IconName; title: string; text: string }[] = [
   { icon: "upload", title: "1. Añade tus archivos", text: "Toca «Importar» para elegir videos, fotos o música. Aparecen abajo, en la línea de tiempo, uno detrás de otro." },
   { icon: "scissors", title: "2. Ordena y corta", text: "Arrastra un clip para moverlo. Tira de sus bordes para acortarlo. Pon la línea verde donde quieras y toca «Cortar» para partirlo en dos." },
-  { icon: "sliders", title: "3. Dale tu estilo", text: "Toca un clip y abre «Editar»: filtros, velocidad, volumen y más. Si te equivocas, toca «Deshacer»." },
+  { icon: "sliders", title: "3. Dale tu estilo", text: "Toca un clip y abre «Editar»: filtros, velocidad, volumen, quitar ruido y recortar pausas de la voz. Si te equivocas, toca «Deshacer»." },
   { icon: "captions", title: "4. Textos y subtítulos", text: "Con «Texto» escribes encima del video. En «Subtítulos» la app puede escribir sola lo que se dice." },
   { icon: "mic", title: "5. Ponle voz", text: "En «Narrar» una voz lee tus subtítulos o lo que escribas. Puedes darle otra voz a cada frase, como si hablaran varias personas." },
   { icon: "export", title: "6. Guarda tu video", text: "Toca «Exportar» y tu video se guarda como un archivo que puedes compartir. Sin marca de agua y sin subir nada a internet." },
