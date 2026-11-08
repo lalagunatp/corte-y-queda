@@ -130,6 +130,12 @@ interface EditorState {
    * las demás pistas se adelanta lo mismo; los textos y subtítulos de dentro siguen a su frase.
    */
   removeRanges(clipId: string, ranges: { start: number; end: number }[]): void;
+  /**
+   * Cambia el texto de los subtítulos (en su orden) por su traducción. Con `keepOriginal`, una copia
+   * de los originales queda en una fila de texto oculta. Una línea que quedó vacía se une a la
+   * anterior para no dejar un subtítulo en blanco.
+   */
+  translateSubtitles(texts: string[], opts: { from: string; to: string; toName: string; fromName: string; keepOriginal: boolean }): void;
   addTrack(kind: TrackKind): void;
   updateTrack(id: string, patch: Partial<Track>): void;
   removeTrack(id: string): void;
@@ -447,6 +453,46 @@ export const useEditor = create<EditorState>((set, get) => ({
       }),
     }));
     set({ selected: pieces.map((c) => c.id) });
+  },
+
+  translateSubtitles: (texts, opts) => {
+    const project = get().project;
+    const track = project.tracks.find((t) => t.role === "subtitles");
+    const lines = subtitleClips(project);
+    if (!track || lines.length !== texts.length) return;
+    const backup: Track | null = opts.keepOriginal
+      ? { id: uid("track"), kind: "text", name: `Subtítulos originales · ${opts.fromName}`, muted: false, hidden: true, lang: opts.from }
+      : null;
+    const copies: TextClip[] = backup ? lines.map((l) => ({ ...l, id: uid("clip"), trackId: backup.id })) : [];
+    const updated = new Map<string, TextClip | null>();
+    let previous: TextClip | null = null;
+    lines.forEach((l, i) => {
+      const text = texts[i].trim();
+      if (!text && previous) {
+        // Sin texto propio: la línea anterior se alarga hasta donde terminaba esta.
+        previous.duration = clipEnd(l) - previous.start;
+        updated.set(l.id, null);
+        return;
+      }
+      previous = { ...l, text: text || l.text };
+      updated.set(l.id, previous);
+    });
+    get().edit((p) => {
+      const at = p.tracks.findIndex((t) => t.id === track.id);
+      const tracks = p.tracks.map((t) => (t.id === track.id ? { ...t, name: `Subtítulos · ${opts.toName}`, lang: opts.to } : t));
+      if (backup) tracks.splice(at + 1, 0, backup);
+      return {
+        tracks,
+        clips: [
+          ...p.clips.flatMap((c) => {
+            if (!updated.has(c.id)) return [c];
+            const next = updated.get(c.id);
+            return next ? [next] : [];
+          }),
+          ...copies,
+        ],
+      };
+    });
   },
 
   addTrack: (kind) => {
