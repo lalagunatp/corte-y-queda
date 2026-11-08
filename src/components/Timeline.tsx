@@ -61,6 +61,7 @@ export function Timeline() {
   const duration = useEditor(selectDuration);
   const s = useEditor.getState;
   const compact = useMediaQuery(COMPACT_QUERY);
+  const cutPreview = useUi((u) => u.cutPreview);
   const [snapping, setSnapping] = useState(true);
   const scroller = useRef<HTMLDivElement>(null);
   const assets = new Map(project.assets.map((a) => [a.id, a]));
@@ -338,6 +339,10 @@ export function Timeline() {
                           {c.type === "text" ? c.text : asset?.name}
                           {c.type === "media" && c.speed !== 1 ? ` · ${c.speed}×` : ""}
                         </span>
+                        {cutPreview?.clipId === c.id &&
+                          cutPreview.cuts.map((k, i) => (
+                            <span key={i} className={`cutmark ${k.on ? "on" : ""}`} style={{ left: k.start * zoom, width: Math.max(2, (k.end - k.start) * zoom) }} />
+                          ))}
                         {c.fadeIn > 0 && <span className="fade in" style={{ width: c.fadeIn * zoom }} />}
                         {c.fadeOut > 0 && <span className="fade out" style={{ width: c.fadeOut * zoom }} />}
                         <span className="handle l" onPointerDown={(e) => startDrag(e, c, "trim-l")} />

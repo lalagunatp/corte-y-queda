@@ -328,6 +328,8 @@ button.mini { min-height: 30px; min-width: 30px; padding: 0; }
 .clip .fade { position: absolute; top: 0; bottom: 0; pointer-events: none; }
 .clip .fade.in { left: 0; background: linear-gradient(to right, #0009, #0000); }
 .clip .fade.out { right: 0; background: linear-gradient(to left, #0009, #0000); }
+.clip .cutmark { position: absolute; top: 0; bottom: 0; pointer-events: none; border-inline: 1px dashed #fff8; background: repeating-linear-gradient(135deg, #0005 0 4px, #0000 4px 8px); }
+.clip .cutmark.on { background: repeating-linear-gradient(135deg, color-mix(in srgb, var(--danger) 75%, transparent) 0 4px, #0003 4px 8px); border-color: #fff; }
 .playhead { position: absolute; top: 0; bottom: 0; width: 2px; margin-left: -1px; background: var(--accent); pointer-events: none; z-index: 4; }
 .playhead::before { content: ""; position: absolute; top: 0; left: -5px; width: 12px; height: 10px; background: var(--accent); clip-path: polygon(0 0, 100% 0, 50% 100%); }
 
@@ -469,3 +471,12 @@ button.ghost.project-menu-btn { background: var(--surface-2); color: var(--text)
   .confetti { display: none; }
   .celebrate { animation: none; }
 }
+
+/* Recorte de voz */
+.voicecut .cut-groups { display: flex; flex-wrap: wrap; }
+.voicecut .cut-groups .check { padding: 4px 8px 4px 0; }
+.cut-list { list-style: none; margin: 6px 0 0; padding: 0; max-height: 260px; overflow-y: auto; border: 1px solid var(--line); border-radius: 8px; }
+.cut-list li { display: flex; align-items: center; gap: 8px; padding: 2px 6px; border-bottom: 1px solid var(--line); font-size: 0.9em; color: var(--muted); }
+.cut-list li:last-child { border-bottom: 0; }
+.cut-list li.on { color: var(--text); }
+.cut-list .grow { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

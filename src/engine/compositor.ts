@@ -1,5 +1,5 @@
 import type { VideoSample } from "mediabunny";
-import type { Clip, MediaClip, Project, TextClip } from "../types";
+import type { Clip, MediaClip, Project, Reframe, TextClip } from "../types";
 import { applyCase, cssFont, isClear } from "../text";
 import { fadeFactor, isActive } from "../util";
 
@@ -21,6 +21,30 @@ export function visibleClips(p: Project, t: number): Clip[] {
 /** Tiempo dentro del archivo fuente que corresponde al instante t del proyecto. */
 export const sourceTime = (c: MediaClip, t: number) => c.inPoint + (t - c.start) * c.speed;
 
+/** Un salto mayor que esto entre dos muestras del reencuadre es un cambio de plano: no se interpola. */
+export const SHOT_JUMP = 0.3;
+
+/** Centro del encuadre en el instante `source` del archivo, interpolando el recorrido. */
+export function reframeCenter(r: Reframe, source: number): [number, number] {
+  const p = r.points;
+  if (!p.length) return [0.5, 0.5];
+  if (source <= p[0][0]) return [p[0][1], p[0][2]];
+  if (source >= p.at(-1)![0]) return [p.at(-1)![1], p.at(-1)![2]];
+  let lo = 0;
+  let hi = p.length - 1;
+  while (hi - lo > 1) {
+    const mid = (lo + hi) >> 1;
+    if (p[mid][0] <= source) lo = mid;
+    else hi = mid;
+  }
+  const [t0, x0, y0] = p[lo];
+  const [t1, x1, y1] = p[hi];
+  // Entre dos planos distintos no se interpola: el salto es instantáneo, como el corte.
+  if (Math.abs(x1 - x0) >= SHOT_JUMP) return [x0, y0];
+  const k = t1 > t0 ? (source - t0) / (t1 - t0) : 0;
+  return [x0 + (x1 - x0) * k, y0 + (y1 - y0) * k];
+}
+
 function sourceSize(s: FrameSource): [number, number] {
   if (s instanceof HTMLVideoElement) return [s.videoWidth, s.videoHeight];
   if (s instanceof HTMLImageElement) return [s.naturalWidth, s.naturalHeight];
@@ -31,13 +55,25 @@ function sourceSize(s: FrameSource): [number, number] {
 function drawMedia(ctx: CanvasRenderingContext2D, p: Project, c: MediaClip, src: FrameSource, t: number) {
   const [sw, sh] = sourceSize(src);
   if (!sw || !sh) return;
-  const fit = Math.min(p.width / sw, p.height / sh) * c.scale;
+  // Con reencuadre la imagen llena todo el cuadro (sin franjas) y se desplaza para seguir a la persona.
+  const fit = (c.reframe ? Math.max(p.width / sw, p.height / sh) : Math.min(p.width / sw, p.height / sh)) * c.scale;
   const w = sw * fit;
   const h = sh * fit;
+  let cx = p.width / 2 + (c.x * p.width) / 2;
+  let cy = p.height / 2 + (c.y * p.height) / 2;
+  if (c.reframe) {
+    const [fx, fy] = reframeCenter(c.reframe, sourceTime(c, t));
+    // La persona va al centro; «Horizontal» y «Vertical» sirven para corregirlo a mano.
+    // Sin pasarse del borde: el cuadro siempre queda cubierto.
+    const limit = (center: number, size: number, frame: number) =>
+      size >= frame ? Math.min(size / 2, Math.max(frame - size / 2, center)) : frame / 2;
+    cx = limit(cx + (0.5 - fx) * w, w, p.width);
+    cy = limit(cy + (0.5 - fy) * h, h, p.height);
+  }
   ctx.save();
   ctx.globalAlpha = c.opacity * fadeFactor(c, t);
   ctx.filter = `brightness(${c.brightness}) contrast(${c.contrast}) saturate(${c.saturation})`;
-  ctx.translate(p.width / 2 + (c.x * p.width) / 2, p.height / 2 + (c.y * p.height) / 2);
+  ctx.translate(cx, cy);
   if (c.rotation) ctx.rotate((c.rotation * Math.PI) / 180);
   if (src instanceof HTMLVideoElement || src instanceof HTMLImageElement) ctx.drawImage(src, -w / 2, -h / 2, w, h);
   else src.draw(ctx, -w / 2, -h / 2, w, h);
