@@ -31,6 +31,10 @@ export type CaptionMessage =
   | { type: "progress"; stage: string; fraction: number | null }
   /** Líneas listas de una parte; `until` es hasta qué segundo del audio ya está procesado. */
   | { type: "lines"; lines: CaptionLine[]; until: number }
+  /** Tramos con voz según el detector, una vez al principio (para el recorte de pausas). */
+  | { type: "voice"; voice: [number, number][] }
+  /** Palabras de una parte con sus tiempos, tal como salen antes de armar las líneas. */
+  | { type: "words"; words: CaptionLine[] }
   /** Descarta las líneas enviadas hasta ahora (se reintenta con otro motor). */
   | { type: "reset" }
   | { type: "done"; device: string; speech: number }
@@ -446,6 +450,7 @@ async function transcribe(req: CaptionRequest, device: Device): Promise<number> 
   asrReady.catch(() => {});
   const { voice, regions } = speechSegments(await speechProbabilities(req.audio), duration);
   const speech = voice.reduce((t, [a, b]) => t + b - a, 0);
+  post({ type: "voice", voice });
   if (!regions.length) return 0;
 
   post({ type: "progress", stage: "Preparando el reconocimiento de voz", fraction: null });
@@ -457,6 +462,7 @@ async function transcribe(req: CaptionRequest, device: Device): Promise<number> 
     post({ type: "progress", stage: `Escuchando parte ${i + 1} de ${windows.length} · ${found} frases`, fraction: i / windows.length });
     const pieces = windows[i];
     const words = await transcribeWindow(asr, req, withContext(windows[i - 1], pieces), voice);
+    post({ type: "words", words: words.map((w) => ({ start: w.start, end: w.end, text: w.text })) });
     const lines = snapLines(buildLines(words, req.maxChars).filter(isSpoken), voice, prevEnd);
     if (lines.length) prevEnd = lines.at(-1)!.end;
     found += lines.length;

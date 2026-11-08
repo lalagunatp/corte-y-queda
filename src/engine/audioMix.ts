@@ -1,5 +1,6 @@
 import { decodedAudio } from "../media";
 import type { Project } from "../types";
+import { denoisedAudio } from "./denoise";
 import { buildVoiceClean } from "./preview";
 
 export const MIX_RATE = 48000;
@@ -18,10 +19,21 @@ export async function mixProjectAudio(p: Project, duration: number): Promise<Aud
     const buffer = await decodedAudio(c.assetId);
     if (!buffer) continue;
 
-    const src = ctx.createBufferSource();
-    src.buffer = buffer;
-    src.playbackRate.value = c.speed;
     const gain = ctx.createGain();
+    // Sin ruido: la señal limpia (ya alineada) se mezcla con la original según la intensidad.
+    const denoise = c.denoise ?? 0;
+    const clean = denoise > 0 ? await denoisedAudio(c.assetId) : null;
+    const layers: [AudioBuffer, number][] = clean ? [[clean, denoise], [buffer, 1 - denoise]] : [[buffer, 1]];
+    for (const [data, level] of layers) {
+      if (level <= 0) continue;
+      const src = ctx.createBufferSource();
+      src.buffer = data;
+      src.playbackRate.value = c.speed;
+      const mix = ctx.createGain();
+      mix.gain.value = level;
+      src.connect(mix).connect(gain);
+      src.start(c.start, c.inPoint, c.duration * c.speed);
+    }
     const g = gain.gain;
     const end = c.start + c.duration;
     g.setValueAtTime(c.fadeIn > 0 ? 0 : c.volume, c.start);
@@ -30,7 +42,6 @@ export async function mixProjectAudio(p: Project, duration: number): Promise<Aud
       g.setValueAtTime(c.volume, end - c.fadeOut);
       g.linearRampToValueAtTime(0, end);
     }
-    src.connect(gain);
     if (c.voiceClean) {
       const [inNode, outNode] = buildVoiceClean(ctx);
       gain.connect(inNode);
@@ -38,7 +49,6 @@ export async function mixProjectAudio(p: Project, duration: number): Promise<Aud
     } else {
       gain.connect(ctx.destination);
     }
-    src.start(c.start, c.inPoint, c.duration * c.speed);
   }
   return ctx.startRendering();
 }

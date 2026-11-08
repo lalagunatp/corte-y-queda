@@ -64,6 +64,10 @@ export interface CaptionStream {
   /** Descarta las líneas entregadas en esta pasada (el motor se reinicia en la CPU). */
   onReset(): void;
   onProgress(stage: string, fraction: number | null): void;
+  /** Palabras de cada parte, en segundos desde el inicio del clip (no del proyecto). */
+  onWords?(words: SubtitleLine[]): void;
+  /** Tramos con voz del clip, en segundos desde su inicio. */
+  onVoice?(voice: [number, number][]): void;
 }
 
 /**
@@ -80,6 +84,8 @@ export async function generateCaptions(
   const toProject = (l: SubtitleLine): SubtitleLine => ({ start: c.start + l.start, end: c.start + Math.min(l.end, c.duration), text: l.text });
   const w = captionWorker();
   let count = 0;
+  let words: SubtitleLine[] = [];
+  let voice: [number, number][] = [];
   let onAbort = () => {};
   try {
     await new Promise<void>((resolve, reject) => {
@@ -98,8 +104,16 @@ export async function generateCaptions(
           const lines = m.lines.filter((l) => l.start < c.duration).map(toProject);
           count += lines.length;
           opts.onLines(lines, c.start + Math.min(m.until, c.duration));
+        } else if (m.type === "words") {
+          const part = m.words.filter((w) => w.start < c.duration);
+          words.push(...part);
+          opts.onWords?.(part);
+        } else if (m.type === "voice") {
+          voice = m.voice;
+          opts.onVoice?.(m.voice);
         } else if (m.type === "reset") {
           count = 0;
+          words = [];
           opts.onReset();
         } else if (m.type === "done") resolve();
         else reject(new Error(m.message));
@@ -111,8 +125,34 @@ export async function generateCaptions(
       w.postMessage({ audio, language: opts.language, model: opts.model, maxChars: opts.maxChars }, [audio.buffer]);
     });
     markCaptionModelReady(opts.model);
+    transcripts.set(transcriptKey(c, opts), { words, voice });
     return count;
   } finally {
     opts.signal?.removeEventListener("abort", onAbort);
   }
+}
+
+/** Palabras con sus tiempos y tramos con voz de un clip, en segundos desde su inicio. */
+export interface Transcript {
+  words: SubtitleLine[];
+  voice: [number, number][];
+}
+
+/**
+ * Transcripciones terminadas en esta sesión, por tramo de archivo: limpiar la voz después de crear
+ * los subtítulos del mismo clip no vuelve a escuchar el audio.
+ */
+const transcripts = new Map<string, Transcript>();
+const transcriptKey = (c: MediaClip, o: { language: string | null; model: string }) =>
+  [c.assetId, c.inPoint, c.duration, c.speed, o.language ?? "auto", o.model].join("|");
+
+/** Transcribe un clip (o reutiliza la transcripción ya hecha) sin crear subtítulos. */
+export async function transcribeClip(
+  c: MediaClip,
+  opts: { language: string | null; model: string; signal?: AbortSignal; onProgress(stage: string, fraction: number | null): void },
+): Promise<Transcript> {
+  const done = transcripts.get(transcriptKey(c, opts));
+  if (done) return done;
+  await generateCaptions(c, { ...opts, maxChars: 42, onLines: () => {}, onReset: () => {} });
+  return transcripts.get(transcriptKey(c, opts))!;
 }

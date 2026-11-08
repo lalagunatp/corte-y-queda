@@ -1,4 +1,5 @@
 import { create } from "zustand";
+import { keptRanges } from "./ai/speechCuts";
 import { DEFAULT_TEXT_STYLE, normalizeText, pickStyle } from "./text";
 import type { Clip, MediaAsset, MediaClip, Narration, Project, SubtitleLine, TextClip, TextStyle, Track, TrackKind } from "./types";
 import { clipEnd, projectDuration, uid } from "./util";
@@ -124,6 +125,11 @@ interface EditorState {
   deleteSelected(): void;
   duplicateSelected(): void;
   splitAtPlayhead(): void;
+  /**
+   * Quita tramos de un clip (segundos desde su inicio) y junta lo que queda. Todo lo posterior en
+   * las demás pistas se adelanta lo mismo; los textos y subtítulos de dentro siguen a su frase.
+   */
+  removeRanges(clipId: string, ranges: { start: number; end: number }[]): void;
   addTrack(kind: TrackKind): void;
   updateTrack(id: string, patch: Partial<Track>): void;
   removeTrack(id: string): void;
@@ -403,6 +409,44 @@ export const useEditor = create<EditorState>((set, get) => ({
       }),
     }));
     set({ selected: created.map((c) => c.id) });
+  },
+
+  removeRanges: (clipId, ranges) => {
+    const target = get().project.clips.find((c): c is MediaClip => c.id === clipId && c.type === "media");
+    if (!target || !ranges.length) return;
+    const kept = keptRanges(ranges, target.duration);
+    const removed = (local: number) =>
+      ranges.reduce((sum, r) => sum + Math.max(0, Math.min(r.end, local) - Math.max(0, r.start)), 0);
+    const total = removed(target.duration);
+    // Tiempo del proyecto antes del recorte → después; lo que cae en un tramo quitado va a su inicio.
+    const map = (t: number) => (t <= target.start ? t : t >= clipEnd(target) ? t - total : t - removed(t - target.start));
+    const pieces: MediaClip[] = [];
+    let at = target.start;
+    kept.forEach(([a, b], i) => {
+      pieces.push({
+        ...target,
+        id: i === 0 ? target.id : uid("clip"),
+        start: at,
+        duration: b - a,
+        inPoint: target.inPoint + a * target.speed,
+        fadeIn: i === 0 ? target.fadeIn : 0,
+        fadeOut: i === kept.length - 1 ? target.fadeOut : 0,
+      });
+      at += b - a;
+    });
+    get().edit((p) => ({
+      clips: p.clips.flatMap((c): Clip[] => {
+        if (c.id === target.id) return pieces;
+        if (c.type === "text") {
+          const start = map(c.start);
+          const end = map(clipEnd(c));
+          // Un texto que caía entero en un tramo quitado desaparece con él.
+          return end - start < 0.15 ? [] : [{ ...c, start, duration: end - start }];
+        }
+        return c.start >= target.start ? [{ ...c, start: map(c.start) }] : [c];
+      }),
+    }));
+    set({ selected: pieces.map((c) => c.id) });
   },
 
   addTrack: (kind) => {

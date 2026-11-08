@@ -38,7 +38,8 @@ function nativeShortSide(p: Project): number | null {
     if (c.type !== "media") continue;
     const a = p.assets.find((x) => x.id === c.assetId);
     if (!a || a.kind === "audio" || !a.width || !a.height) continue;
-    const fit = Math.min(p.width / a.width, p.height / a.height) * c.scale;
+    // Con reencuadre la imagen se amplía hasta llenar el cuadro.
+    const fit = (c.reframe ? Math.max(p.width / a.width, p.height / a.height) : Math.min(p.width / a.width, p.height / a.height)) * c.scale;
     best = Math.max(best ?? 0, shortSide / fit);
   }
   return best;

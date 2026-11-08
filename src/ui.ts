@@ -15,6 +15,12 @@ export function useMediaQuery(query: string): boolean {
   return matches;
 }
 
+/** Tramos propuestos por el recorte de voz, en segundos desde el inicio de su clip. */
+export interface CutPreview {
+  clipId: string;
+  cuts: { start: number; end: number; on: boolean }[];
+}
+
 export type Sheet = "media" | "edit" | "subtitles" | "narration" | null;
 export type LeftPanel = "media" | "subtitles" | "narration";
 
@@ -31,6 +37,9 @@ interface UiState {
   focusSubtitle: { id: string; at: number } | null;
   exporting: boolean;
   help: boolean;
+  /** Propuesta de recorte que se está revisando; la línea de tiempo la marca sobre el clip. */
+  cutPreview: CutPreview | null;
+  setCutPreview(p: CutPreview | null): void;
   setSheet(s: Sheet): void;
   setLeft(p: LeftPanel): void;
   /** Abre el panel Subtítulos (pestaña izquierda u hoja según el tamaño de pantalla). */
@@ -50,6 +59,8 @@ export const useUi = create<UiState>((set) => ({
   focusSubtitle: null,
   exporting: false,
   help: false,
+  cutPreview: null,
+  setCutPreview: (cutPreview) => set({ cutPreview }),
   setSheet: (sheet) => set({ sheet }),
   setLeft: (left) => set({ left }),
   openSubtitles: (sourceClipId) =>

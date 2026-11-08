@@ -65,8 +65,21 @@ export interface MediaClip extends ClipBase, Transform {
   saturation: number;
   /** Cadena de limpieza de voz (paso alto, paso bajo y compresor). */
   voiceClean: boolean;
+  /** Reducción de ruido con RNNoise, 0..1 (proporción de la señal limpia); sin valor = apagada. */
+  denoise?: number;
+  /** Reencuadre automático: el encuadre sigue a la persona detectada. */
+  reframe?: Reframe;
   /** Si el audio es una narración: lo necesario para volver a leerla con otra voz o texto. */
   narration?: Narration;
+}
+
+/**
+ * Recorrido del encuadre, ya suavizado. Cada punto es [tiempo en el archivo fuente (s), centro x,
+ * centro y], con el centro en fracción de la imagen original (0..1). En tiempo del archivo, para
+ * que cortar o recortar el clip no lo desajuste.
+ */
+export interface Reframe {
+  points: [number, number, number][];
 }
 
 export interface Narration {

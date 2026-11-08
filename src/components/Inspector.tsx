@@ -4,7 +4,9 @@ import type { MediaClip, TextClip } from "../types";
 import { useUi } from "../ui";
 import { Icon } from "./Icon";
 import { Segmented, Slider, Toggle } from "./controls";
+import { ReframeSection, needsReframe } from "./Reframe";
 import { TextStyleEditor, sampleOf } from "./TextStyleEditor";
+import { VoiceCut } from "./VoiceCut";
 
 const FILTERS = [
   { name: "Original", brightness: 1, contrast: 1, saturation: 1 },
@@ -63,6 +65,8 @@ function MediaInspector({ clip }: { clip: MediaClip }) {
   const asset = useEditor((s) => s.project.assets.find((a) => a.id === clip.assetId));
   const onAudioTrack = useEditor((s) => s.project.tracks.find((t) => t.id === clip.trackId)?.kind === "audio");
   const setAudioOnly = useEditor((s) => s.setAudioOnly);
+  const width = useEditor((s) => s.project.width);
+  const height = useEditor((s) => s.project.height);
   const u = (patch: Partial<MediaClip>) => update(clip.id, patch);
   // Un video en una fila de sonido solo se oye: no tiene opciones de imagen.
   const audioOnly = asset?.kind === "video" && onAudioTrack;
@@ -161,7 +165,11 @@ function MediaInspector({ clip }: { clip: MediaClip }) {
             />
             <output className="muted small">{Math.round(clip.volume * 100)}%</output>
           </div>
-          <Toggle on={clip.voiceClean} label="Mejorar la voz (menos ruido)" onChange={(v) => u({ voiceClean: v })} />
+          <Toggle on={(clip.denoise ?? 0) > 0} label="Quitar ruido de fondo" onChange={(v) => u({ denoise: v ? 0.85 : 0 })} />
+          {(clip.denoise ?? 0) > 0 && (
+            <Slider label="Intensidad" value={clip.denoise ?? 0} min={0.2} max={1} step={0.05} format={(v) => `${Math.round(v * 100)}`} unit="%" onChange={(v) => u({ denoise: v })} />
+          )}
+          <Toggle on={clip.voiceClean} label="Voz más clara (ecualizador)" onChange={(v) => u({ voiceClean: v })} />
         </section>
       )}
 
@@ -170,6 +178,12 @@ function MediaInspector({ clip }: { clip: MediaClip }) {
         <Toggle on={clip.fadeIn > 0} label="Aparecer poco a poco" onChange={(v) => u({ fadeIn: v ? Math.min(FADE, clip.duration / 2) : 0 })} />
         <Toggle on={clip.fadeOut > 0} label="Desaparecer poco a poco" onChange={(v) => u({ fadeOut: v ? Math.min(FADE, clip.duration / 2) : 0 })} />
       </section>
+
+      {audible && <VoiceCut clip={clip} />}
+
+      {visual && (clip.reframe || needsReframe(asset, { width, height })) && (
+        <ReframeSection clip={clip} />
+      )}
 
       {visual && (
         <section className="group">

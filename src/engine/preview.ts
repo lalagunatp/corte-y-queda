@@ -2,6 +2,7 @@ import { assetUrl } from "../media";
 import type { MediaClip, Project } from "../types";
 import { fadeFactor, isActive } from "../util";
 import { type FrameSource, type Rect, drawFrame, sourceTime } from "./compositor";
+import { DENOISE_RATE, WORKLET_DELAY, createDenoiseNode } from "./denoise";
 
 interface Voice {
   el: HTMLMediaElement;
@@ -11,6 +12,14 @@ interface Voice {
   cleanOut: DynamicsCompressorNode;
   clean: boolean;
   assetId: string;
+  source: MediaElementAudioSourceNode;
+  /** Señal original, retrasada lo mismo que la limpia cuando se mezclan. */
+  dryDelay: DelayNode;
+  dry: GainNode;
+  wet: GainNode;
+  /** RNNoise en tiempo real; se crea la primera vez que el clip pide reducción de ruido. */
+  denoiser: Promise<AudioWorkletNode> | null;
+  denoiseReady: boolean;
 }
 
 /** Cadena de limpieza de voz compartida con la exportación. */
@@ -41,7 +50,8 @@ export function buildVoiceClean(ctx: BaseAudioContext): [BiquadFilterNode, Dynam
 export class PreviewEngine {
   private voices = new Map<string, Voice>();
   private images = new Map<string, HTMLImageElement>();
-  private audio = new AudioContext();
+  // RNNoise trabaja a 48 kHz; el navegador convierte a la frecuencia de la tarjeta de sonido.
+  private audio = new AudioContext({ sampleRate: DENOISE_RATE });
 
   resumeAudio() {
     if (this.audio.state === "suspended") void this.audio.resume();
@@ -64,9 +74,14 @@ export class PreviewEngine {
     const source = this.audio.createMediaElementSource(el);
     const gain = this.audio.createGain();
     const [cleanIn, cleanOut] = buildVoiceClean(this.audio);
-    source.connect(gain);
+    const dryDelay = this.audio.createDelay(0.1);
+    const dry = this.audio.createGain();
+    const wet = this.audio.createGain();
+    wet.gain.value = 0;
+    source.connect(dryDelay).connect(dry).connect(gain);
+    wet.connect(gain);
     gain.connect(this.audio.destination);
-    v = { el, gain, cleanIn, cleanOut, clean: false, assetId: c.assetId };
+    v = { el, gain, cleanIn, cleanOut, clean: false, assetId: c.assetId, source, dryDelay, dry, wet, denoiser: null, denoiseReady: false };
     this.voices.set(c.id, v);
     return v;
   }
@@ -84,6 +99,25 @@ export class PreviewEngine {
     v.clean = on;
   }
 
+  /** Mezcla original y limpia según la intensidad; hasta que RNNoise carga, se oye el original. */
+  private setDenoise(v: Voice, level: number) {
+    if (level > 0 && !v.denoiser) {
+      v.denoiser = createDenoiseNode(this.audio);
+      v.denoiser
+        .then((node) => {
+          v.source.connect(node).connect(v.wet);
+          v.denoiseReady = true;
+        })
+        .catch(() => {
+          v.denoiser = null;
+        });
+    }
+    const k = v.denoiseReady ? level : 0;
+    v.wet.gain.value = k;
+    v.dry.gain.value = 1 - k;
+    v.dryDelay.delayTime.value = v.denoiseReady && level > 0 ? WORKLET_DELAY : 0;
+  }
+
   private drop(id: string) {
     const v = this.voices.get(id);
     if (!v) return;
@@ -92,6 +126,11 @@ export class PreviewEngine {
     v.el.load();
     v.gain.disconnect();
     v.cleanOut.disconnect();
+    v.source.disconnect();
+    void v.denoiser?.then((node) => {
+      node.disconnect();
+      node.port.postMessage("destroy");
+    });
     this.voices.delete(id);
   }
 
@@ -129,6 +168,7 @@ export class PreviewEngine {
       const audible = active && !!track && !track.muted && !(track.kind === "video" && track.hidden);
       v.gain.gain.value = audible ? c.volume * fadeFactor(c, t) : 0;
       this.setClean(v, c.voiceClean);
+      this.setDenoise(v, c.denoise ?? 0);
       if (playing && active) {
         if (v.el.paused) {
           v.el.currentTime = target;
