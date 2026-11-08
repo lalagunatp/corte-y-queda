@@ -132,6 +132,7 @@ footer { color: var(--muted); font-size: 0.9rem; }
     <a href="#archivos">Añadir archivos y música</a>
     <a href="#linea">Ordenar y cortar</a>
     <a href="#editar">Editar un clip</a>
+    <a href="#ia">Limpiar la voz y encuadrar</a>
     <a href="#texto">Poner texto</a>
     <a href="#subtitulos">Subtítulos</a>
     <a href="#narrar">Narrar con voces</a>
@@ -184,12 +185,38 @@ footer { color: var(--muted); font-size: 0.9rem; }
       <ul>
         <li><b>Filtro:</b> Original, Claro, Vivo, Suave, Contraste o Blanco y negro.</li>
         <li><b>Velocidad:</b> Lenta, Normal, Rápida o Doble.</li>
-        <li><b>Sonido:</b> volumen y <b>Mejorar la voz (menos ruido)</b>.</li>
+        <li><b>Sonido:</b> volumen, <b>Quitar ruido de fondo</b> y <b>Voz más clara (ecualizador)</b>. Más detalles en <a href="#ia">Limpiar la voz y encuadrar</a>.</li>
         <li><b>Imagen y sonido</b> (en los videos): <span class="btn">Usar solo el audio</span> pasa el clip a una fila de sonido; se oye, pero la imagen no sale. <span class="btn">Mostrar también la imagen</span> lo devuelve.</li>
         <li><b>Aparecer y desaparecer:</b> fundidos al principio y al final.</li>
         <li><b>Girar y hacer zoom</b>; en <b>Avanzado</b> están la posición, la opacidad, el brillo, el contraste y la saturación.</li>
       </ul>
       <p class="tip">¿Te equivocaste? <span class="btn">Deshacer</span> está debajo de la vista previa (<kbd>Ctrl</kbd>+<kbd>Z</kbd>). Guarda hasta 200 pasos.</p>
+    </article>
+
+    <article class="guide" id="ia">
+      <div class="guide-head"><h3>Limpiar la voz y encuadrar</h3><span class="chip edit">Editar</span><span class="new">Nuevo</span></div>
+      <dl class="where"><dt>Dónde</dt><dd>Toca un clip y abre <b>Editar</b> (columna derecha en la PC; <b>Editar</b> abajo en el celular)</dd></dl>
+      <p><b>Recortar la voz</b> quita pausas largas, muletillas («eh», «este») y frases repetidas.</p>
+      <ol>
+        <li>Toca <span class="btn">Buscar pausas y muletillas</span>. La app escucha el clip; la primera vez descarga el reconocimiento de voz.</li>
+        <li>Los cortes propuestos se marcan en rojo en la línea de tiempo. Arriba ves cuántos segundos se quitarán.</li>
+        <li>Elige cuánto silencio dejar entre frases: <b>Cortas</b>, <b>Normales</b> o <b>Largas</b>.</li>
+        <li>Marca o desmarca grupos enteros (Pausas, Muletillas, Repeticiones), o abre <b>Revisar uno por uno</b> y toca <b>▶</b> para escuchar cada tramo.</li>
+        <li>Toca <span class="btn">Aplicar recorte</span>. Lo que viene después se recorre y los subtítulos siguen a su frase.</li>
+      </ol>
+      <p class="tip">Las <b>partes largas sin voz</b> (música, escenas) se proponen sin marcar, para no borrar algo a propósito. Si ya creaste los subtítulos de ese clip, se aprovecha lo que la app escuchó y es casi inmediato.</p>
+      <p><b>Quitar ruido de fondo</b> (en <b>Sonido</b>) baja el ruido constante: ventilador, aire, tráfico, viento.</p>
+      <ul>
+        <li>Actívalo y ajusta la <b>Intensidad</b>. Se oye al momento en la vista previa y se graba al exportar; el archivo original no cambia.</li>
+        <li>Funciona mejor con ruido parejo que con música u otras voces de fondo.</li>
+      </ul>
+      <p><b>Encuadre automático</b> aparece cuando el video no tiene la forma del proyecto (por ejemplo, un video horizontal en un proyecto vertical).</p>
+      <ul>
+        <li>Toca <span class="btn">Seguir a la persona</span>: la imagen llena el cuadro y la cámara sigue a la persona con un movimiento suave.</li>
+        <li>Si no te gusta en algún momento, corrígelo con <b>Horizontal</b> y <b>Vertical</b> en <b>Avanzado</b>, o toca <span class="btn">Quitar</span>.</li>
+        <li>Para pasar un video a vertical, primero cambia la forma del proyecto a <b>Vertical</b> en <a href="#ajustes">Ajustes del video</a>.</li>
+      </ul>
+      <p class="tip">Todo se hace en tu equipo: no se sube nada a internet ni se usa ninguna cuenta. Cualquier cambio se deshace con <span class="btn">Deshacer</span>.</p>
     </article>
 
     <article class="guide" id="texto">
