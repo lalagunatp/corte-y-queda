@@ -1,31 +1,74 @@
+import { latinize } from "./latinize";
 import type { TranslateMessage, TranslateRequest } from "./translateWorker";
 
-/** Idiomas de los subtítulos que la app sabe traducir. */
-export const TRANSLATION_LANGUAGES = [
+/** Idiomas en los que pueden estar los subtítulos para traducirlos. */
+export const SOURCE_LANGUAGES = [
   { id: "es", name: "Español" },
   { id: "en", name: "Inglés" },
   { id: "fr", name: "Francés" },
+  { id: "pt", name: "Portugués" },
   { id: "de", name: "Alemán" },
   { id: "it", name: "Italiano" },
 ] as const;
 
-export type LanguageId = (typeof TRANSLATION_LANGUAGES)[number]["id"];
+/**
+ * Idiomas a los que se puede traducir. El español sale en dos variantes: los modelos escriben
+ * español de España y, para Latinoamérica, se adapta después (ver `latinize`). `text` es el nombre
+ * dentro de una frase («traducidos al …»).
+ */
+export const TARGET_LANGUAGES = [
+  { id: "es", name: "Español (Latinoamérica)", text: "español latino" },
+  { id: "es-ES", name: "Español (España)", text: "español de España" },
+  { id: "en", name: "Inglés", text: "inglés" },
+  { id: "fr", name: "Francés", text: "francés" },
+  { id: "de", name: "Alemán", text: "alemán" },
+  { id: "it", name: "Italiano", text: "italiano" },
+] as const;
 
-export const languageName = (id: string) => TRANSLATION_LANGUAGES.find((l) => l.id === id)?.name ?? id;
+export type SourceId = (typeof SOURCE_LANGUAGES)[number]["id"];
+export type TargetId = (typeof TARGET_LANGUAGES)[number]["id"];
 
-/** Idiomas desde los que se puede traducir (hay modelo directo a varios destinos). */
-export const SOURCE_LANGUAGES: LanguageId[] = ["es", "en"];
+export const sourceName = (id: string) => SOURCE_LANGUAGES.find((l) => l.id === id)?.name ?? id;
+export const targetName = (id: string) => TARGET_LANGUAGES.find((l) => l.id === id)?.name ?? id;
+export const targetText = (id: string) => TARGET_LANGUAGES.find((l) => l.id === id)?.text ?? id;
+
+/** Idioma de origen que corresponde al de una pista (las dos variantes de español son «es»). */
+export function sourceOf(lang: string | undefined): SourceId | null {
+  const base = lang?.split("-")[0];
+  return SOURCE_LANGUAGES.find((l) => l.id === base)?.id ?? null;
+}
 
 /**
- * Pares con modelo Opus-MT oficial (Helsinki-NLP, convertidos por Hugging Face). Probado: llegar al
- * portugués con el modelo inglés→lenguas romances mezclaba español, portugués y francés, así que
- * no se ofrece hasta tener un modelo directo de confianza.
+ * Pares con modelo Opus-MT oficial (Helsinki-NLP, convertidos por Hugging Face). No hay modelo que
+ * escriba portugués con fiabilidad (el de inglés→lenguas romances mezclaba español, portugués y
+ * francés), así que el portugués solo es origen: el modelo lenguas romances→inglés sí lo entiende.
  */
-const PAIRS = new Set(["es-en", "es-fr", "es-de", "es-it", "en-es", "en-fr", "en-de", "en-it"]);
+const PAIRS = new Set([
+  "es-en", "es-fr", "es-de", "es-it",
+  "en-es", "en-fr", "en-de", "en-it",
+  "fr-es", "fr-en", "fr-de",
+  "de-es", "de-en", "de-fr",
+  "it-es", "it-en", "it-fr",
+]);
 
-/** Modelo que traduce de `from` a `to`, o null si no hay. */
-export function translationModel(from: LanguageId, to: LanguageId): string | null {
+function directModel(from: string, to: string): string | null {
+  if (from === "pt") return to === "en" ? "Xenova/opus-mt-ROMANCE-en" : null;
   return PAIRS.has(`${from}-${to}`) ? `Xenova/opus-mt-${from}-${to}` : null;
+}
+
+/**
+ * Modelos que hay que encadenar para traducir de `from` a `to`: uno si hay modelo directo, dos si
+ * hay que pasar por el inglés (algo menos fiel), ninguno si solo hay que adaptar el español de
+ * España al latino. Null si no se puede.
+ */
+export function translationRoute(from: SourceId, to: TargetId): string[] | null {
+  const base = to === "es-ES" ? "es" : to;
+  if (from === base) return to === "es" ? [] : null;
+  const direct = directModel(from, base);
+  if (direct) return [direct];
+  const first = directModel(from, "en");
+  const second = directModel("en", base);
+  return first && second ? [first, second] : null;
 }
 
 /** Descarga aproximada la primera vez: cada modelo comprimido pesa unos 115 MB. */
@@ -91,12 +134,15 @@ let worker: Worker | null = null;
 /** Traduce las líneas, respetando cuántas son, en el orden dado. */
 export async function translateLines(
   lines: string[],
-  from: LanguageId,
-  to: LanguageId,
+  from: SourceId,
+  to: TargetId,
   opts: { signal?: AbortSignal; onProgress(stage: string, fraction: number | null): void },
 ): Promise<string[]> {
-  const model = translationModel(from, to);
-  if (!model) throw new Error("No se puede traducir entre esos idiomas.");
+  const models = translationRoute(from, to);
+  if (!models) throw new Error("No se puede traducir entre esos idiomas.");
+  const finish = (text: string) => (to === "es" ? latinize(text) : text);
+  // Solo adaptar el español: línea por línea, sin tocar cómo están repartidas.
+  if (!models.length) return lines.map(finish);
   const groups = groupSentences(lines);
   worker ??= new Worker(new URL("./translateWorker.ts", import.meta.url), { type: "module" });
   const w = worker;
@@ -120,11 +166,11 @@ export async function translateLines(
         worker = null;
         reject(new Error(e.message || "No se pudo iniciar el traductor"));
       };
-      w.postMessage({ model, sentences: groups.map((g) => g.text) } satisfies TranslateRequest);
+      w.postMessage({ models, sentences: groups.map((g) => g.text) } satisfies TranslateRequest);
     });
     const out = new Array<string>(lines.length).fill("");
     groups.forEach((g, i) => {
-      const parts = splitAcross(sentences[i] ?? "", g.lines.map((n) => lines[n]));
+      const parts = splitAcross(finish(sentences[i] ?? ""), g.lines.map((n) => lines[n]));
       g.lines.forEach((n, k) => (out[n] = parts[k]));
     });
     return out;

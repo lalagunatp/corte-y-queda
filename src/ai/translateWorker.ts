@@ -6,7 +6,8 @@ import { type TranslationPipeline, pipeline } from "@huggingface/transformers";
  * Cada frase sale del equipo solo hacia el modelo local; nada se envía a internet.
  */
 export interface TranslateRequest {
-  model: string;
+  /** Modelos en cadena: con dos, el primero pasa el texto al inglés y el segundo al destino. */
+  models: string[];
   sentences: string[];
 }
 
@@ -20,7 +21,7 @@ const post = (m: TranslateMessage) => (self as DedicatedWorkerGlobalScope).postM
 // Los modelos cargados se conservan entre usos del worker.
 const loaded = new Map<string, Promise<TranslationPipeline>>();
 
-function load(model: string): Promise<TranslationPipeline> {
+function load(model: string, step: string): Promise<TranslationPipeline> {
   let p = loaded.get(model);
   if (!p) {
     const files = new Map<string, { loaded: number; total: number }>();
@@ -38,7 +39,7 @@ function load(model: string): Promise<TranslationPipeline> {
           total += f.total;
         }
         if (total < 1e6) return;
-        post({ type: "progress", stage: `Preparando el traductor · ${(done / 1e6).toFixed(0)} de ${(total / 1e6).toFixed(0)} MB`, fraction: done / total });
+        post({ type: "progress", stage: `${step}Preparando el traductor ·${(done / 1e6).toFixed(0)} de ${(total / 1e6).toFixed(0)} MB`, fraction: done / total });
       }) as never,
     }) as Promise<TranslationPipeline>;
     p.catch(() => loaded.delete(model));
@@ -58,6 +59,8 @@ export function cleanTranslation(text: string): string {
   return text
     .replace(/([.!?…])[\s.!?…]{2,}$/u, "$1")
     .replace(/([.!?…,;:])\1{3,}/gu, "$1")
+    // «fácil..» → «fácil.», sin tocar los puntos suspensivos.
+    .replace(/(?<!\.)\.\.$/u, ".")
     .trim();
 }
 
@@ -66,16 +69,21 @@ const maxTokens = (sentences: string[]) => Math.min(256, 16 + 3 * Math.max(...se
 
 self.onmessage = async (ev: MessageEvent<TranslateRequest>) => {
   try {
-    const { model, sentences } = ev.data;
-    const translator = await load(model);
-    const out: string[] = [];
-    for (let i = 0; i < sentences.length; i += BATCH) {
-      post({ type: "progress", stage: `Traduciendo · ${i} de ${sentences.length} frases`, fraction: i / sentences.length });
-      const batch = sentences.slice(i, i + BATCH);
-      const result = (await translator(batch, { max_new_tokens: maxTokens(batch) } as never)) as { translation_text: string }[];
-      out.push(...result.map((r) => cleanTranslation(r.translation_text)));
+    const { models } = ev.data;
+    let sentences = ev.data.sentences;
+    for (const [n, model] of models.entries()) {
+      const step = models.length > 1 ? `Paso ${n + 1} de ${models.length} · ` : "";
+      const translator = await load(model, step);
+      const out: string[] = [];
+      for (let i = 0; i < sentences.length; i += BATCH) {
+        post({ type: "progress", stage: `${step}Traduciendo · ${i} de ${sentences.length} frases`, fraction: (n + i / sentences.length) / models.length });
+        const batch = sentences.slice(i, i + BATCH);
+        const result = (await translator(batch, { max_new_tokens: maxTokens(batch) } as never)) as { translation_text: string }[];
+        out.push(...result.map((r) => cleanTranslation(r.translation_text)));
+      }
+      sentences = out;
     }
-    post({ type: "done", sentences: out });
+    post({ type: "done", sentences });
   } catch (e) {
     post({ type: "error", message: e instanceof Error ? e.message : String(e) });
   }

@@ -12,13 +12,14 @@ import { TextStyleEditor } from "./TextStyleEditor";
 import { TranslateSubtitles } from "./TranslateSubtitles";
 import { engineRef } from "./Preview";
 
-const LANGUAGES: [string, string][] = [
-  ["spanish", "Español"],
-  ["english", "Inglés"],
-  ["portuguese", "Portugués"],
-  ["french", "Francés"],
-  ["german", "Alemán"],
-  ["italian", "Italiano"],
+/** Idioma para Whisper, nombre y código de dos letras que se guarda en la pista. */
+const LANGUAGES: [string, string, string?][] = [
+  ["spanish", "Español", "es"],
+  ["english", "Inglés", "en"],
+  ["portuguese", "Portugués", "pt"],
+  ["french", "Francés", "fr"],
+  ["german", "Alemán", "de"],
+  ["italian", "Italiano", "it"],
   ["", "Detectar automáticamente"],
 ];
 
@@ -121,7 +122,7 @@ function Generate({ onDone }: { onDone(n: number): void }) {
         signal: abort.current.signal,
         onProgress: (stage, fraction) => setBusy({ stage: waiting ? "Esperando la siguiente parte…" : stage, fraction }),
         onLines: (lines, until) => {
-          for (const id of s().addSubtitles(lines)) created.add(id);
+          for (const id of s().addSubtitles(lines, { lang: LANGUAGES.find(([v]) => v === language)?.[2] })) created.add(id);
           processedUntil = until;
           if (playAlong && !started && lines.length) {
             started = true;
