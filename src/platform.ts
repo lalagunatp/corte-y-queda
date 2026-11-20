@@ -17,7 +17,7 @@ export interface FileKind {
   extension: string;
 }
 
-export const MP4: FileKind = { description: "Vídeo MP4", mime: "video/mp4", extension: ".mp4" };
+export const MP4: FileKind = { description: "Video MP4", mime: "video/mp4", extension: ".mp4" };
 
 export async function saveFile(blob: Blob, suggestedName: string, kind: FileKind = MP4): Promise<void> {
   const picker = (window as Window & {

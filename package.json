@@ -3,7 +3,7 @@
   "private": true,
   "version": "0.1.0",
   "type": "module",
-  "description": "Editor de vídeo local, gratuito y sin marca de agua. Web y escritorio (Tauri).",
+  "description": "Editor de video local, gratuito y sin marca de agua. Web y escritorio (Tauri).",
   "scripts": {
     "dev": "vite",
     "build": "tsc --noEmit && vite build",

@@ -8,7 +8,7 @@ export interface MediaAsset {
   duration: number;
   width: number;
   height: number;
-  /** Miniatura en data URL (vídeo e imagen). */
+  /** Miniatura en data URL (video e imagen). */
   thumbnail: string | null;
   /** Audio creado por la app (narración): no se lista en Archivos y se borra cuando nada lo usa. */
   generated?: "narration";
