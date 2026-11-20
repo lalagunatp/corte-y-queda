@@ -44,7 +44,7 @@ export function newProject(opts: { name?: string; width?: number; height?: numbe
     background: "#000000",
     tracks: [
       { id: uid("track"), kind: "text", name: "Texto", muted: false, hidden: false },
-      { id: uid("track"), kind: "video", name: "Vídeo 1", muted: false, hidden: false },
+      { id: uid("track"), kind: "video", name: "Video 1", muted: false, hidden: false },
       { id: uid("track"), kind: "audio", name: "Audio 1", muted: false, hidden: false },
     ],
     clips: [],
@@ -242,7 +242,7 @@ export const useEditor = create<EditorState>((set, get) => ({
       project.tracks.find((t) => t.kind === kind && !(audioOnly && t.role));
     const extraTracks: Track[] = [];
     if (!track) {
-      track = { id: uid("track"), kind, name: kind === "audio" ? "Audio 1" : "Vídeo 1", muted: false, hidden: false };
+      track = { id: uid("track"), kind, name: kind === "audio" ? "Audio 1" : "Video 1", muted: false, hidden: false };
       extraTracks.push(track);
     }
     const trackId = track.id;
@@ -286,7 +286,7 @@ export const useEditor = create<EditorState>((set, get) => ({
     const extra: Track[] = [];
     if (!track) {
       const n = project.tracks.filter((t) => t.kind === kind).length + 1;
-      track = { id: uid("track"), kind, name: on ? `Audio ${n}` : `Vídeo ${n}`, muted: false, hidden: false };
+      track = { id: uid("track"), kind, name: on ? `Audio ${n}` : `Video ${n}`, muted: false, hidden: false };
       extra.push(track);
     }
     const trackId = track.id;
@@ -501,9 +501,9 @@ export const useEditor = create<EditorState>((set, get) => ({
 
   addTrack: (kind) => {
     const n = get().project.tracks.filter((t) => t.kind === kind).length + 1;
-    const name = kind === "video" ? `Vídeo ${n}` : kind === "audio" ? `Audio ${n}` : `Texto ${n}`;
+    const name = kind === "video" ? `Video ${n}` : kind === "audio" ? `Audio ${n}` : `Texto ${n}`;
     const track: Track = { id: uid("track"), kind, name, muted: false, hidden: false };
-    // Las pistas de vídeo y texto nuevas van arriba (se dibujan encima); las de audio, abajo.
+    // Las pistas de video y texto nuevas van arriba (se dibujan encima); las de audio, abajo.
     get().edit((p) => ({ tracks: kind === "audio" ? [...p.tracks, track] : [track, ...p.tracks] }));
   },
   updateTrack: (id, patch) => get().edit((p) => ({ tracks: p.tracks.map((t) => (t.id === id ? { ...t, ...patch } : t)) })),

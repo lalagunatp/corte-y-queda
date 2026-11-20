@@ -1,7 +1,7 @@
 {
   "name": "Corte y Queda",
   "short_name": "Corte y Queda",
-  "description": "Editor de vídeo local, gratuito y sin marca de agua.",
+  "description": "Editor de video local, gratuito y sin marca de agua.",
   "lang": "es",
   "start_url": "./",
   "scope": "./",

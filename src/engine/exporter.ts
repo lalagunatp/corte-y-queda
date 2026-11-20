@@ -189,7 +189,7 @@ export async function exportMp4(p: Project, opts: ExportOptions): Promise<Export
     audio.close();
   }
 
-  // --- Vídeo ---
+  // --- Video ---
   const canvas = document.createElement("canvas");
   canvas.width = width;
   canvas.height = height;
