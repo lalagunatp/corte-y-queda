@@ -114,8 +114,11 @@ interface EditorState {
   /** Pasa un clip de video a una fila de sonido (solo se oye) o lo devuelve a una de video. */
   setAudioOnly(clipId: string, on: boolean): void;
   addText(text?: string): void;
-  /** Añade líneas a la pista de subtítulos (la crea si falta); con replace sustituye las existentes. */
-  addSubtitles(lines: SubtitleLine[], opts?: { replace?: boolean }): string[];
+  /**
+   * Añade líneas a la pista de subtítulos (la crea si falta); con replace sustituye las existentes.
+   * `lang` anota en qué idioma están (código de dos letras).
+   */
+  addSubtitles(lines: SubtitleLine[], opts?: { replace?: boolean; lang?: string }): string[];
   /** Pone audios de narración en su pista (la crea si falta) y devuelve los ids de los clips. */
   addNarration(items: { start: number; asset: MediaAsset; narration: Narration }[]): string[];
   /** Cambia el audio de una narración ya puesta (otra voz, otro texto) sin moverla. */
@@ -339,8 +342,9 @@ export const useEditor = create<EditorState>((set, get) => ({
       x: 0,
     }));
     const removed = new Set(opts.replace ? current.map((c) => c.id) : []);
+    const lang = opts.lang ?? track.lang;
     get().edit((p) => ({
-      tracks: existing ? p.tracks : [track, ...p.tracks],
+      tracks: existing ? p.tracks.map((t) => (t.id === track.id && lang !== t.lang ? { ...t, lang } : t)) : [{ ...track, lang }, ...p.tracks],
       clips: [...p.clips.filter((c) => !removed.has(c.id)), ...created],
     }));
     return created.map((c) => c.id);

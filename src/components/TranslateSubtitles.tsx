@@ -1,5 +1,17 @@
 import { useRef, useState } from "react";
-import { type LanguageId, MODEL_DOWNLOAD_MB, SOURCE_LANGUAGES, TRANSLATION_LANGUAGES, languageName, translateLines, translationModel } from "../ai/translate";
+import {
+  MODEL_DOWNLOAD_MB,
+  SOURCE_LANGUAGES,
+  type SourceId,
+  TARGET_LANGUAGES,
+  type TargetId,
+  sourceName,
+  sourceOf,
+  targetName,
+  targetText,
+  translateLines,
+  translationRoute,
+} from "../ai/translate";
 import { useEditor } from "../store";
 import type { TextClip } from "../types";
 import { Icon } from "./Icon";
@@ -28,16 +40,20 @@ function markReady(model: string) {
  */
 export function TranslateSubtitles({ lines, onDone }: { lines: TextClip[]; onDone(message: string): void }) {
   const trackLang = useEditor((s) => s.project.tracks.find((t) => t.role === "subtitles")?.lang);
-  const [from, setFrom] = useState<LanguageId>(SOURCE_LANGUAGES.includes(trackLang as LanguageId) ? (trackLang as LanguageId) : "es");
-  const targets = TRANSLATION_LANGUAGES.filter((l) => translationModel(from, l.id));
-  const [to, setTo] = useState<LanguageId>(from === "en" ? "es" : "en");
+  const [from, setFrom] = useState<SourceId>(sourceOf(trackLang) ?? "es");
+  const targets = TARGET_LANGUAGES.filter((l) => translationRoute(from, l.id));
+  const [to, setTo] = useState<TargetId>(from === "es" ? "en" : "es");
   const target = targets.some((l) => l.id === to) ? to : targets[0].id;
   const [keep, setKeep] = useState(true);
   const [busy, setBusy] = useState<{ stage: string; fraction: number | null } | null>(null);
   const [error, setError] = useState<string | null>(null);
   const abort = useRef<AbortController | null>(null);
 
-  const model = translationModel(from, target)!;
+  const route = translationRoute(from, target)!;
+  const missing = route.filter((m) => !modelReady(m)).length;
+  // La pista conserva su variante (es-ES) si coincide con el idioma elegido.
+  const fromLang = sourceOf(trackLang) === from ? trackLang! : from;
+  const fromName = fromLang === "es-ES" ? targetName(fromLang) : sourceName(from);
 
   const run = async () => {
     setError(null);
@@ -49,11 +65,11 @@ export function TranslateSubtitles({ lines, onDone }: { lines: TextClip[]; onDon
         target,
         { signal: abort.current.signal, onProgress: (stage, fraction) => setBusy({ stage, fraction }) },
       );
-      markReady(model);
-      useEditor.getState().translateSubtitles(texts, { from, to: target, fromName: languageName(from), toName: languageName(target), keepOriginal: keep });
+      route.forEach(markReady);
+      useEditor.getState().translateSubtitles(texts, { from: fromLang, to: target, fromName, toName: targetName(target), keepOriginal: keep });
       onDone(
-        `Subtítulos traducidos al ${languageName(target).toLowerCase()}. Revísalos en la lista.` +
-          (keep ? ` Los originales quedaron en la fila oculta «Subtítulos originales · ${languageName(from)}».` : ""),
+        `Subtítulos ${route.length ? "traducidos" : "adaptados"} al ${targetText(target)}. Revísalos en la lista.` +
+          (keep ? ` Los originales quedaron en la fila oculta «Subtítulos originales · ${fromName}».` : ""),
       );
     } catch (e) {
       if (!(e instanceof DOMException && e.name === "AbortError")) setError(e instanceof Error ? e.message : String(e));
@@ -68,17 +84,17 @@ export function TranslateSubtitles({ lines, onDone }: { lines: TextClip[]; onDon
       <div className="inline">
         <label className="stack">
           <span>Están en</span>
-          <select value={from} onChange={(e) => setFrom(e.target.value as LanguageId)} disabled={!!busy}>
-            {SOURCE_LANGUAGES.map((id) => (
-              <option key={id} value={id}>
-                {languageName(id)}
+          <select value={from} onChange={(e) => setFrom(e.target.value as SourceId)} disabled={!!busy}>
+            {SOURCE_LANGUAGES.map((l) => (
+              <option key={l.id} value={l.id}>
+                {l.name}
               </option>
             ))}
           </select>
         </label>
         <label className="stack">
           <span>Traducir al</span>
-          <select value={target} onChange={(e) => setTo(e.target.value as LanguageId)} disabled={!!busy}>
+          <select value={target} onChange={(e) => setTo(e.target.value as TargetId)} disabled={!!busy}>
             {targets.map((l) => (
               <option key={l.id} value={l.id}>
                 {l.name}
@@ -91,7 +107,13 @@ export function TranslateSubtitles({ lines, onDone }: { lines: TextClip[]; onDon
         <input type="checkbox" checked={keep} onChange={(e) => setKeep(e.target.checked)} disabled={!!busy} />
         Guardar los originales en una fila oculta (para exportar en los dos idiomas)
       </label>
-      {!modelReady(model) && <p className="muted small">La primera vez descarga el traductor (unos {MODEL_DOWNLOAD_MB} MB). Después funciona sin internet.</p>}
+      {route.length > 1 && <p className="muted small">No hay traductor directo: pasa primero por el inglés, así que puede quedar algo menos fiel.</p>}
+      {!route.length && <p className="muted small">Cambia «vosotros» por «ustedes» y las palabras de España por las de Latinoamérica (ordenador → computadora, coger → tomar…).</p>}
+      {missing > 0 && (
+        <p className="muted small">
+          La primera vez descarga {missing > 1 ? `${missing} traductores` : "el traductor"} (unos {missing * MODEL_DOWNLOAD_MB} MB). Después funciona sin internet.
+        </p>
+      )}
       {busy ? (
         <>
           <div className="progress" aria-label={busy.stage}>
@@ -102,7 +124,7 @@ export function TranslateSubtitles({ lines, onDone }: { lines: TextClip[]; onDon
         </>
       ) : (
         <button className="primary" onClick={() => void run()} disabled={!lines.length}>
-          <Icon name="sparkles" /> Traducir {lines.length} subtítulos
+          <Icon name="sparkles" /> {route.length ? "Traducir" : "Adaptar"} {lines.length} subtítulos
         </button>
       )}
       {error && <p className="error">{error}</p>}
